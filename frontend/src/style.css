@@ -1,0 +1,19 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
+  font-size: 14px;
+  color: #333;
+  background: #f5f6f7;
+}
+
+input,
+select,
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
