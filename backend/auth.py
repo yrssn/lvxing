@@ -7,7 +7,7 @@ import json
 import secrets
 import time
 
-from fastapi import HTTPException, Request
+from fastapi import Depends, HTTPException, Request
 
 from config import TOKEN_EXPIRE_HOURS
 from models import AppSetting, User

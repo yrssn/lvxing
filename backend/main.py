@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import db
-from routers import auth, data, history, params, scrape, settings, tasks
+from routers import auth, data, history, params, scrape, settings, tasks, users
 from scheduler import scheduler_start, scheduler_stop
 
 
@@ -22,6 +22,7 @@ from scheduler import scheduler_start, scheduler_stop
 async def lifespan(app: FastAPI):
     try:
         db.init_db()
+        db.ensure_default_admin()
     except Exception as e:  # 数据库暂不可用时不阻塞启动
         print(f"[warn] MySQL 初始化失败: {e}")
     try:
@@ -41,7 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth.router, settings.router, scrape.router, history.router, params.router, tasks.router, data.router):
+for r in (auth.router, users.router, settings.router, scrape.router, history.router, params.router, tasks.router, data.router):
     app.include_router(r)
 
 

@@ -39,6 +39,6 @@ SERVER_URL = (
 # 登录 token 有效期（小时）
 TOKEN_EXPIRE_HOURS = int(os.getenv("TOKEN_EXPIRE_HOURS", "72"))
 
-# 后端监听（run.py 读取）
-HOST = os.getenv("HOST", "127.0.0.1")
-PORT = int(os.getenv("PORT", "8000"))
+# 后端监听（run.py 读取；不要用 PORT/HOST 命名，避免和系统环境变量冲突）
+APP_HOST = os.getenv("APP_HOST", "127.0.0.1")
+APP_PORT = int(os.getenv("APP_PORT", "8000"))
