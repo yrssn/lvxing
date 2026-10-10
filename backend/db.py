@@ -1,69 +1,21 @@
 # -*- coding: utf-8 -*-
-"""MySQL 持久化：查询历史 + 比价记录"""
+"""MySQL 持久化：连接管理、建库建表、轻量迁移 + 比价数据存取"""
 import json
 from datetime import datetime
 
-from sqlalchemy import (
-    JSON,
-    Column,
-    DateTime,
-    Float,
-    Integer,
-    String,
-    Text,
-    create_engine,
-)
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
 from config import DB_NAME, DATABASE_URL, SERVER_URL
+from models import Base, BiddingRecord, QueryHistory, User
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=3600)
 ServerEngine = create_engine(SERVER_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
-Base = declarative_base()
-
-
-class QueryHistory(Base):
-    """一次比价查询"""
-    __tablename__ = "query_history"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    domain = Column(String(20), default="shm")
-    flight_no = Column(String(20), default="")
-    dpt = Column(String(10), default="")
-    arr = Column(String(10), default="")
-    flight_date = Column(String(20), default="")
-    cabin = Column(String(10), default="")
-    carrier = Column(String(10), default="")
-    row_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.now)
-
-
-class BiddingRecord(Base):
-    """比价结果中的一行"""
-    __tablename__ = "bidding_record"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    history_id = Column(Integer, index=True, nullable=False)
-    flight_date = Column(String(20), default="")
-    dpt = Column(String(10), default="")
-    arr = Column(String(10), default="")
-    flight_no = Column(String(20), default="")
-    main_flight_no = Column(String(20), default="")
-    cabin = Column(String(10), default="")
-    policy_type = Column(String(100), default="")
-    follow_base_price = Column(Float)
-    sell_price = Column(Float)
-    external_cabin = Column(String(10), default="")
-    self_price = Column(Float)
-    raw = Column(JSON)
-
 
 def ensure_database():
     """数据库不存在时自动创建"""
-    from sqlalchemy import text
-
     with ServerEngine.connect() as conn:
         conn.execute(
             text(
@@ -74,12 +26,67 @@ def ensure_database():
         conn.commit()
 
 
+# 已有表的轻量迁移（create_all 不会给已存在的表加列/加索引）
+# MySQL 不支持 ADD COLUMN IF NOT EXISTS，靠错误码静默跳过：1060=列已存在 1061=索引已存在
+_MIGRATION_STATEMENTS = [
+    "ALTER TABLE bidding_record ADD COLUMN source VARCHAR(10) NOT NULL DEFAULT 'manual'",
+    "ALTER TABLE bidding_record ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+    "ALTER TABLE bidding_record ADD INDEX idx_br_flight_date (flight_date)",
+    "ALTER TABLE bidding_record ADD INDEX idx_br_created_at (created_at)",
+    "ALTER TABLE bidding_record ADD INDEX idx_br_dpt_arr (dpt, arr)",
+    "ALTER TABLE scrape_task ADD COLUMN days_ahead INT NOT NULL DEFAULT 1",
+    "ALTER TABLE user ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0",
+]
+
+
+def _run_migrations():
+    with engine.connect() as conn:
+        for stmt in _MIGRATION_STATEMENTS:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception as e:
+                code = getattr(getattr(e, "orig", None), "args", [None])[0]
+                if code in (1060, 1061):
+                    continue
+                print(f"[warn] 迁移语句执行失败（忽略）: {stmt} -> {e}")
+
+
 def init_db():
     ensure_database()
     Base.metadata.create_all(engine)
+    _run_migrations()
 
 
-def save_query_result(params: dict, rows: list) -> int:
+def ensure_default_admin():
+    """确保存在管理员账号：无管理员时创建默认账号 admin / admin123"""
+    from auth import hash_password
+
+    db = SessionLocal()
+    try:
+        if db.query(User).filter(User.is_admin == 1).first():
+            return
+        existing = db.query(User).filter(User.username == "admin").first()
+        if existing:
+            existing.is_admin = 1
+            db.commit()
+            print("[init] 已将账号 admin 提升为管理员")
+            return
+        db.add(
+            User(
+                username="admin",
+                password_hash=hash_password("admin123"),
+                is_admin=1,
+                is_active=1,
+            )
+        )
+        db.commit()
+        print("[init] 已创建初始管理员账号：admin / admin123（请登录后尽快在「用户管理」中改密）")
+    finally:
+        db.close()
+
+
+def save_query_result(params: dict, rows: list, source: str = "manual") -> int:
     """保存一次查询及全部结果行，返回 history_id"""
     row_dicts = []
     for r in rows:
@@ -100,6 +107,7 @@ def save_query_result(params: dict, rows: list) -> int:
                 external_cabin=str(r.get("externalCabin") or ""),
                 self_price=_to_float(r.get("selfPrice")),
                 raw=r,
+                source=source,
             )
         )
 
@@ -169,8 +177,8 @@ def get_history_records(history_id: int) -> list:
         db.close()
 
 
-def delete_history(history_id: int) -> int:
-    """删除一次历史及其全部结果行，返回删除的行数"""
+def delete_history(history_id: int) -> tuple:
+    """删除一次历史及其全部结果行，返回 (是否删除, 行数)"""
     db = SessionLocal()
     try:
         n = db.query(BiddingRecord).filter(BiddingRecord.history_id == history_id).delete()
