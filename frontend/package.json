@@ -1,7 +1,7 @@
 {
   "name": "spider-lvxing-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.4.27"
+    "@element-plus/icons-vue": "^2.3.1",
+    "echarts": "^5.5.0",
+    "element-plus": "^2.7.6",
+    "vue": "^3.4.27",
+    "vue-router": "^4.3.3"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.6.2",
