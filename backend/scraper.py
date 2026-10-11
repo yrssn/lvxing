@@ -145,11 +145,18 @@ async def scrape_and_save(params: dict, source: str = "manual", save: bool = Tru
     cookie_invalid = _looks_cookie_invalid(status, data)
     rows = [] if cookie_invalid else extract_order_rows(data)
     history_id = None
+    duplicate = False
     if save and rows:
         try:
             import db
 
-            history_id = db.save_query_result(params, rows, source=source)
+            recent_id = db.find_recent_history(params, seconds=10)
+            if recent_id is not None:
+                # 10 秒内同参数已入库（重复提交），复用已有历史，不再落库
+                history_id = recent_id
+                duplicate = True
+            else:
+                history_id = db.save_query_result(params, rows, source=source)
         except Exception as e:
             print(f"[warn] 结果入库失败: {e}")
     return {
@@ -159,6 +166,7 @@ async def scrape_and_save(params: dict, source: str = "manual", save: bool = Tru
         "rowCount": len(rows),
         "historyId": history_id,
         "cookieInvalid": cookie_invalid,
+        "duplicate": duplicate,
         "error": None,
     }
 

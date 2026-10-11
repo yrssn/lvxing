@@ -86,30 +86,43 @@ def ensure_default_admin():
         db.close()
 
 
+def _record_key(rec: "BiddingRecord") -> tuple:
+    """行级业务键：用于去掉目标站接口返回的重复行"""
+    return (
+        rec.flight_date, rec.dpt, rec.arr, rec.flight_no, rec.main_flight_no,
+        rec.cabin, rec.policy_type, rec.follow_base_price, rec.sell_price,
+        rec.external_cabin, rec.self_price,
+    )
+
+
 def save_query_result(params: dict, rows: list, source: str = "manual") -> int:
-    """保存一次查询及全部结果行，返回 history_id"""
+    """保存一次查询及全部结果行（业务键相同的重复行只留一条），返回 history_id"""
     row_dicts = []
+    seen = set()
     for r in rows:
         if not isinstance(r, dict):
             continue
-        row_dicts.append(
-            BiddingRecord(
-                history_id=0,  # 占位，flush 后回填
-                flight_date=str(r.get("flightDate") or ""),
-                dpt=str(r.get("dpt") or ""),
-                arr=str(r.get("arr") or ""),
-                flight_no=str(r.get("flightNo") or ""),
-                main_flight_no=str(r.get("mainFlightNo") or ""),
-                cabin=str(r.get("cabin") or ""),
-                policy_type=str(r.get("policyType") or ""),
-                follow_base_price=_to_float(r.get("followBasePrice")),
-                sell_price=_to_float(r.get("sellPrice")),
-                external_cabin=str(r.get("externalCabin") or ""),
-                self_price=_to_float(r.get("selfPrice")),
-                raw=r,
-                source=source,
-            )
+        rec = BiddingRecord(
+            history_id=0,  # 占位，flush 后回填
+            flight_date=str(r.get("flightDate") or ""),
+            dpt=str(r.get("dpt") or ""),
+            arr=str(r.get("arr") or ""),
+            flight_no=str(r.get("flightNo") or ""),
+            main_flight_no=str(r.get("mainFlightNo") or ""),
+            cabin=str(r.get("cabin") or ""),
+            policy_type=str(r.get("policyType") or ""),
+            follow_base_price=_to_float(r.get("followBasePrice")),
+            sell_price=_to_float(r.get("sellPrice")),
+            external_cabin=str(r.get("externalCabin") or ""),
+            self_price=_to_float(r.get("selfPrice")),
+            raw=r,
+            source=source,
         )
+        key = _record_key(rec)
+        if key in seen:
+            continue  # 目标站接口返回的重复行，只保留一条
+        seen.add(key)
+        row_dicts.append(rec)
 
     db = SessionLocal()
     try:
@@ -130,6 +143,34 @@ def save_query_result(params: dict, rows: list, source: str = "manual") -> int:
             db.add(rec)
         db.commit()
         return history.id
+    finally:
+        db.close()
+
+
+def find_recent_history(params: dict, seconds: int = 10):
+    """短时防重：同参数在 seconds 秒内已入库则返回该 history_id，否则 None。
+    兜底重复提交（双击、多标签页、网络重试），同秒只留一份。"""
+    from datetime import timedelta
+
+    db = SessionLocal()
+    try:
+        cutoff = datetime.now() - timedelta(seconds=seconds)
+        h = (
+            db.query(QueryHistory)
+            .filter(
+                QueryHistory.domain == (params.get("domain") or "shm"),
+                QueryHistory.flight_no == (params.get("flightNo") or ""),
+                QueryHistory.dpt == (params.get("dpt") or ""),
+                QueryHistory.arr == (params.get("arr") or ""),
+                QueryHistory.flight_date == (params.get("flightDate") or ""),
+                QueryHistory.cabin == (params.get("cabin") or ""),
+                QueryHistory.carrier == (params.get("carrier") or ""),
+                QueryHistory.created_at >= cutoff,
+            )
+            .order_by(QueryHistory.id.desc())
+            .first()
+        )
+        return h.id if h else None
     finally:
         db.close()
 

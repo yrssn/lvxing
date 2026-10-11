@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { apiScrapeRun, apiHistoryList, apiHistoryRecords, apiHistoryDelete, apiGetCookie } from '../api'
+import { apiScrapeRun, apiHistoryList, apiHistoryRecords, apiHistoryDelete, apiGetCookie, apiParamList } from '../api'
 import { downloadCsv } from '../utils/csv'
 
 const router = useRouter()
@@ -79,8 +79,41 @@ function addLog(text) {
   })
 }
 
+/* ---------- 选择航班信息（预存查询参数）直接填充 ---------- */
+const paramList = ref([])
+const selectedParamId = ref(null)
+
+async function loadParams() {
+  try {
+    const json = await apiParamList()
+    if (json.success) paramList.value = json.data.filter((p) => p.enabled)
+  } catch {
+    /* ignore */
+  }
+}
+
+function paramLabel(p) {
+  const parts = [p.dpt, '→', p.arr]
+  if (p.flightNo) parts.push(` ${p.flightNo}`)
+  if (p.cabin) parts.push(` ${p.cabin}舱`)
+  if (p.carrier) parts.push(` 航司${p.carrier}`)
+  return parts.join('')
+}
+
+function onParamSelected(id) {
+  const p = paramList.value.find((x) => x.id === id)
+  if (!p) return
+  form.dpt = p.dpt
+  form.arr = p.arr
+  form.flightNo = p.flightNo || ''
+  form.cabin = p.cabin || ''
+  form.carrier = p.carrier || ''
+  addLog(`已选择航班信息「${p.name}」：${paramLabel(p)}，点击「查询」或「抓取并入库」执行`)
+}
+
 /* ---------- 查询 / 抓取入库 ---------- */
 async function run(save) {
+  if (loading.value) return // 防重入：上一次请求未结束时忽略再次点击
   if (!form.dpt || !form.arr || !form.flightDate) {
     ElMessage.warning('出发、到达、航班日期为必填项')
     return
@@ -100,7 +133,7 @@ async function run(save) {
       rows.value = extracted
       useDefinedCols.value = 'orderList' in (json.raw?.data || {})
       viewingHistoryId.value = null
-      addLog(`${action}完成：返回 ${extracted.length} 行${json.historyId ? `，已入库（历史 #${json.historyId}）` : ''}`)
+      addLog(`${action}完成：返回 ${extracted.length} 行${json.historyId ? `，已入库（历史 #${json.historyId}）` : ''}${json.duplicate ? '，10 秒内重复请求，未重复入库' : ''}`)
       if (save) loadHistory()
       else if (!json.historyId && extracted.length) addLog('提示：本次为查询查看，未入库')
     } else {
@@ -206,6 +239,7 @@ async function removeHistory(item) {
 
 onMounted(async () => {
   loadHistory()
+  loadParams()
   try {
     const json = await apiGetCookie()
     hasCookie.value = !!json.data?.cookie
@@ -233,6 +267,18 @@ onMounted(async () => {
     <!-- 查询表单 -->
     <el-card shadow="never">
       <el-form inline class="query-form">
+        <el-form-item label="航班信息">
+          <el-select
+            v-model="selectedParamId"
+            placeholder="选择预存的航班信息，自动填充"
+            clearable
+            filterable
+            style="width: 260px"
+            @change="onParamSelected"
+          >
+            <el-option v-for="p in paramList" :key="p.id" :label="`${p.name}（${paramLabel(p)}）`" :value="p.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="航司">
           <el-input v-model="form.carrier" placeholder="航司二字码，可空" maxlength="2" style="width: 130px" />
         </el-form-item>

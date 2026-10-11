@@ -70,6 +70,7 @@ class ScrapeTask(Base):
     interval_days = Column(Integer, nullable=False, default=1)  # 1=每天 2=隔天...
     time_of_day = Column(Time, nullable=False)  # 每日执行时刻
     days_ahead = Column(Integer, default=1)  # 抓取今天+N天后的航班日期
+    days_ahead_to = Column(Integer)  # 抓取日期范围终点（含），NULL=仅抓 days_ahead 单日
     enabled = Column(Integer, default=1)
     status = Column(String(20), nullable=False, default="idle")  # idle/running
     next_run_at = Column(DateTime)
