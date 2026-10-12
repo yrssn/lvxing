@@ -41,7 +41,13 @@ export const apiTaskLogs = (id, limit = 50) => get(`/api/tasks/${id}/logs?limit=
 function buildQuery(params) {
   const qs = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) {
-    if (v !== '' && v !== null && v !== undefined) qs.set(k, v)
+    if (Array.isArray(v)) {
+      for (const item of v) {
+        if (item !== '' && item !== null && item !== undefined) qs.append(k, item)
+      }
+    } else if (v !== '' && v !== null && v !== undefined) {
+      qs.set(k, v)
+    }
   }
   const s = qs.toString()
   return s ? `?${s}` : ''
@@ -49,3 +55,4 @@ function buildQuery(params) {
 
 export const apiDataRecords = (filters) => get(`/api/data/records${buildQuery(filters)}`)
 export const apiDataTrend = (filters) => get(`/api/data/trend${buildQuery(filters)}`)
+export const apiDataPolicyTypes = () => get('/api/data/policy-types')
