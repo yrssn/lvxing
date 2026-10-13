@@ -12,33 +12,6 @@ function tomorrow() {
   return d.toISOString().slice(0, 10)
 }
 
-/* ---------- 航班信息快捷选择 ---------- */
-const paramOptions = ref([])
-const selectedParams = ref([])
-
-async function loadParams() {
-  try {
-    const json = await apiParamList()
-    paramOptions.value = json.data
-  } catch {
-    /* 航班信息加载失败不阻塞页面 */
-  }
-}
-
-/* 单选时自动填充表单；多选走批量执行 */
-watch(selectedParams, (ids) => {
-  if (ids.length === 1) {
-    const p = paramOptions.value.find((x) => x.id === ids[0])
-    if (p) {
-      form.carrier = p.carrier || ''
-      form.dpt = p.dpt || ''
-      form.arr = p.arr || ''
-      form.flightNo = p.flightNo || ''
-      form.cabin = p.cabin || ''
-    }
-  }
-})
-
 /* ---------- 查询表单 ---------- */
 const form = reactive({
   carrier: '',
@@ -106,16 +79,16 @@ function addLog(text) {
   })
 }
 
-/* ---------- 选择航班信息（预存查询参数）直接填充 ---------- */
-const paramList = ref([])
-const selectedParamId = ref(null)
+/* ---------- 航班信息快捷选择（预存查询参数） ---------- */
+const paramOptions = ref([])
+const selectedParams = ref([])
 
 async function loadParams() {
   try {
     const json = await apiParamList()
-    if (json.success) paramList.value = json.data.filter((p) => p.enabled)
+    if (json.success) paramOptions.value = json.data.filter((p) => p.enabled)
   } catch {
-    /* ignore */
+    /* 航班信息加载失败不阻塞页面 */
   }
 }
 
@@ -127,16 +100,20 @@ function paramLabel(p) {
   return parts.join('')
 }
 
-function onParamSelected(id) {
-  const p = paramList.value.find((x) => x.id === id)
-  if (!p) return
-  form.dpt = p.dpt
-  form.arr = p.arr
-  form.flightNo = p.flightNo || ''
-  form.cabin = p.cabin || ''
-  form.carrier = p.carrier || ''
-  addLog(`已选择航班信息「${p.name}」：${paramLabel(p)}，点击「查询」或「抓取并入库」执行`)
-}
+/* 单选时自动填充表单；多选走批量执行 */
+watch(selectedParams, (ids) => {
+  if (ids.length === 1) {
+    const p = paramOptions.value.find((x) => x.id === ids[0])
+    if (p) {
+      form.carrier = p.carrier || ''
+      form.dpt = p.dpt || ''
+      form.arr = p.arr || ''
+      form.flightNo = p.flightNo || ''
+      form.cabin = p.cabin || ''
+      addLog(`已选择航班信息「${p.name}」：${paramLabel(p)}，点击「查询」或「抓取并入库」执行`)
+    }
+  }
+})
 
 /* ---------- 查询 / 抓取入库 ---------- */
 async function run(save) {
@@ -369,7 +346,7 @@ onMounted(async () => {
             <el-option
               v-for="p in paramOptions"
               :key="p.id"
-              :label="`${p.name}（${p.dpt}→${p.arr}）${p.enabled ? '' : ' [已停用]'}`"
+              :label="`${p.name}（${paramLabel(p)}）`"
               :value="p.id"
             />
           </el-select>
