@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import (
     JSON,
     Column,
+    Date,
     DateTime,
     Float,
     Index,
@@ -67,10 +68,14 @@ class ScrapeTask(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False)
-    interval_days = Column(Integer, nullable=False, default=1)  # 1=每天 2=隔天...
+    interval_days = Column(Integer, nullable=False, default=1)  # 1=每天 2=隔天...（weekdays 为空时生效）
+    weekdays = Column(String(20), nullable=False, default="")  # 每周执行日，逗号分隔 0-6（0=周一），空=按 interval_days
     time_of_day = Column(Time, nullable=False)  # 每日执行时刻
-    days_ahead = Column(Integer, default=1)  # 抓取今天+N天后的航班日期
-    days_ahead_to = Column(Integer)  # 抓取日期范围终点（含），NULL=仅抓 days_ahead 单日
+    window_mode = Column(String(10), nullable=False, default="rolling")  # rolling=滚动窗口 fixed=固定日期段
+    days_ahead = Column(Integer, default=1)  # rolling：抓取今天+N天后的航班日期
+    days_ahead_to = Column(Integer)  # rolling：范围终点（含），NULL=仅抓 days_ahead 单日
+    fixed_date_from = Column(Date)  # fixed：起始航班日期
+    fixed_date_to = Column(Date)  # fixed：结束航班日期（含），NULL=仅抓起始日
     enabled = Column(Integer, default=1)
     status = Column(String(20), nullable=False, default="idle")  # idle/running
     next_run_at = Column(DateTime)

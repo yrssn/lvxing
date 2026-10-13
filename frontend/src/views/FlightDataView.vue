@@ -120,6 +120,7 @@ const paramList = ref([])
 const trendParamId = ref(null)
 const trendFlightNo = ref('')
 const trendDateRange = ref(defaultTrendRange())
+const trendPolicyTypes = ref([]) /* 弹窗内政策类型筛选：看指定产品的价格 */
 
 function defaultTrendRange() {
   const fmt = (d) => d.toISOString().slice(0, 10)
@@ -150,6 +151,7 @@ function trendBaseParams() {
   const range = trendDateRange.value || []
   base.flightDateFrom = range[0] || ''
   base.flightDateTo = range[1] || ''
+  base.policyType = trendPolicyTypes.value /* 弹窗内选择优先于列表筛选 */
   const p = paramList.value.find((x) => x.id === trendParamId.value)
   if (p) {
     base.dpt = p.dpt
@@ -168,8 +170,9 @@ const trendRoute = computed(() => {
   parts.push(`${f.dpt || '*'}→${f.arr || '*'}`)
   if (f.flightNo) parts.push(`航班${f.flightNo}`)
   if (f.carrier) parts.push(`航司${f.carrier}`)
+  if (trendPolicyTypes.value.length) parts.push(trendPolicyTypes.value.join('/'))
   const onlyDefault = !f.dpt && !f.arr && !f.flightNo && !f.carrier
-  return onlyDefault ? '全部航线' : parts.join(' · ')
+  return onlyDefault && !trendPolicyTypes.value.length ? '全部航线' : parts.join(' · ')
 })
 
 /* 把日期范围内每一天补全为 X 轴（没抓取数据的天为空点，走势断开） */
@@ -212,6 +215,8 @@ async function loadTrend() {
 }
 
 function showTrend() {
+  /* 打开时继承列表当前的政策类型筛选，可在弹窗内再改 */
+  trendPolicyTypes.value = [...(filters.policyType || [])]
   trendVisible.value = true
   loadTrend()
 }
@@ -370,6 +375,21 @@ onMounted(() => {
             @keyup.enter="loadTrend"
             @clear="loadTrend"
           />
+        </el-form-item>
+        <el-form-item label="政策类型">
+          <el-select
+            v-model="trendPolicyTypes"
+            placeholder="全部（可多选看指定产品）"
+            clearable
+            filterable
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            style="width: 220px"
+            @change="loadTrend"
+          >
+            <el-option v-for="t in policyTypeOptions" :key="t" :label="t" :value="t" />
+          </el-select>
         </el-form-item>
         <el-form-item label="航班日期">
           <el-date-picker

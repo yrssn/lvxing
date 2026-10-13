@@ -16,17 +16,45 @@ TICK_SECONDS = 30
 _loop_task: asyncio.Task = None
 
 
-def advance(old_next: datetime, now: datetime, interval_days: int, time_of_day: time_type) -> datetime:
-    """推进到严格大于 now 的下一个执行点（old_next 为锚点，补跑/宕机多天也能追上）"""
-    candidate = old_next or datetime.combine(now.date(), time_of_day)
-    while candidate <= now:
-        candidate = datetime.combine(candidate.date() + timedelta(days=interval_days), time_of_day)
+def _parse_weekdays(weekdays: str) -> set:
+    """'0,3,5' -> {0,3,5}；0=周一 ... 6=周日；空/非法 -> 空集合（按 interval_days 模式）"""
+    out = set()
+    for part in (weekdays or "").split(","):
+        part = part.strip()
+        if part.isdigit() and 0 <= int(part) <= 6:
+            out.add(int(part))
+    return out
+
+
+def advance(old_next: datetime, now: datetime, interval_days: int, time_of_day, weekdays: str = "") -> datetime:
+    """推进到严格大于 now 的下一个执行点（old_next 为锚点，补跑/宕机多天也能追上）
+
+    - weekdays 非空：每周模式，找下一个允许星期几的执行时刻（忽略 interval_days）
+    - weekdays 为空：按 interval_days 间隔（原逻辑）
+    """
+    wd = _parse_weekdays(weekdays)
+    if not wd:
+        candidate = old_next or datetime.combine(now.date(), time_of_day)
+        while candidate <= now:
+            candidate = datetime.combine(candidate.date() + timedelta(days=interval_days), time_of_day)
+        return candidate
+    # 每周模式：从锚点/现在的当天或次日开始，找第一个允许星期几
+    day = (old_next or now).date()
+    candidate = datetime.combine(day, time_of_day)
+    if candidate <= now:
+        day += timedelta(days=1)
+        candidate = datetime.combine(day, time_of_day)
+    guard = 0
+    while candidate.weekday() not in wd and guard < 60:
+        day += timedelta(days=1)
+        candidate = datetime.combine(day, time_of_day)
+        guard += 1
     return candidate
 
 
-def compute_initial_next_run(interval_days: int, time_of_day: time_type) -> datetime:
+def compute_initial_next_run(interval_days: int, time_of_day, weekdays: str = "") -> datetime:
     """创建/启用/修改任务时：今天的时刻未过则今天，否则顺延"""
-    return advance(None, datetime.now(), interval_days, time_of_day)
+    return advance(None, datetime.now(), interval_days, time_of_day, weekdays)
 
 
 def startup_reset():
@@ -107,19 +135,28 @@ async def run_task(task_id: int, trigger: str = "schedule"):
             status = "failed"
             message = "任务没有关联查询参数"
         else:
-            # 抓取日期范围：今天+daysAhead 至 今天+daysAheadTo（含），每天一个航班日期
-            start_off = task.days_ahead or 0
-            end_off = task.days_ahead_to if task.days_ahead_to is not None else start_off
-            if end_off < start_off:
-                end_off = start_off
-            offsets = list(range(start_off, end_off + 1))
+            # 抓取航班日期列表
+            if task.window_mode == "fixed" and task.fixed_date_from:
+                # 固定日期段：from~to 逐天（to 空 = 单日）
+                d0 = task.fixed_date_from
+                d1 = task.fixed_date_to or d0
+                if d1 < d0:
+                    d1 = d0
+                dates = [d0 + timedelta(days=i) for i in range((d1 - d0).days + 1)]
+            else:
+                # 滚动窗口：今天+daysAhead 至 今天+daysAheadTo（含）
+                start_off = task.days_ahead or 0
+                end_off = task.days_ahead_to if task.days_ahead_to is not None else start_off
+                if end_off < start_off:
+                    end_off = start_off
+                dates = [(datetime.now() + timedelta(days=off)).date() for off in range(start_off, end_off + 1)]
             log2 = db.get(TaskRunLog, log.id)
-            log2.total_params = len(pairs) * len(offsets)
+            log2.total_params = len(pairs) * len(dates)
             db.commit()
 
             first = True
-            for off in offsets:
-                flight_date = (datetime.now() + timedelta(days=off)).strftime("%Y-%m-%d")
+            for flight_date in dates:
+                flight_date_str = flight_date.strftime("%Y-%m-%d")
                 for tp, qp in pairs:
                     if not first:
                         lo = max(0, task.min_delay_sec or 0)
@@ -132,7 +169,7 @@ async def run_task(task_id: int, trigger: str = "schedule"):
                         "flightNo": qp.flight_no or "",
                         "dpt": qp.dpt or "",
                         "arr": qp.arr or "",
-                        "flightDate": flight_date,
+                        "flightDate": flight_date_str,
                         "cabin": qp.cabin or "",
                         "carrier": qp.carrier or "",
                     }
@@ -141,7 +178,7 @@ async def run_task(task_id: int, trigger: str = "schedule"):
                         "name": qp.name,
                         "dpt": qp.dpt,
                         "arr": qp.arr,
-                        "flightDate": flight_date,
+                        "flightDate": flight_date_str,
                     }
                     result = await scraper.scrape_and_save(p, source="task", save=True)
                     if result.get("cookieInvalid"):
@@ -162,11 +199,12 @@ async def run_task(task_id: int, trigger: str = "schedule"):
                     detail.append(item)
                 if status == "failed":
                     break
-            total = len(pairs) * len(offsets)
+            total = len(pairs) * len(dates)
             if status != "failed" and ok < total:
                 status = "partial"
             if not message:
-                message = f"共 {total} 次抓取（{len(pairs)} 条参数 × {len(offsets)} 天），成功 {ok} 次"
+                mode = "固定日期段" if (task.window_mode == "fixed" and task.fixed_date_from) else "滚动窗口"
+                message = f"共 {total} 次抓取（{len(pairs)} 条参数 × {len(dates)} 天，{mode}），成功 {ok} 次"
 
         # 更新日志
         log2 = db.get(TaskRunLog, run_id)
@@ -181,7 +219,7 @@ async def run_task(task_id: int, trigger: str = "schedule"):
         if t:
             t.last_status = status
             if trigger == "schedule":
-                t.next_run_at = advance(t.next_run_at, datetime.now(), t.interval_days, t.time_of_day)
+                t.next_run_at = advance(t.next_run_at, datetime.now(), t.interval_days, t.time_of_day, t.weekdays)
                 t.status = "idle"
             else:
                 t.status = "idle"
@@ -196,7 +234,8 @@ async def run_task(task_id: int, trigger: str = "schedule"):
             if t and t.status == "running":
                 if trigger == "schedule":
                     t.next_run_at = advance(
-                        t.next_run_at, datetime.now(), t.interval_days or 1, t.time_of_day or time_type(0, 0)
+                        t.next_run_at, datetime.now(), t.interval_days or 1,
+                        t.time_of_day or time_type(0, 0), t.weekdays or "",
                     )
                 t.status = "idle"
                 t.last_status = "failed"

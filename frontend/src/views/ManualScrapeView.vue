@@ -9,7 +9,28 @@ const router = useRouter()
 
 function tomorrow() {
   const d = new Date(Date.now() + 86400000)
-  return d.toISOString().slice(0, 10)
+  return fmtDate(d)
+}
+
+/* 本地时区安全的 YYYY-MM-DD（不用 toISOString，避免差一天） */
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/* 把日期范围展开成逐天列表（最多 90 天） */
+function eachDate(range) {
+  const [a, b] = range || []
+  if (!a || !b) return []
+  const out = []
+  const cur = new Date(`${a}T00:00:00`)
+  const end = new Date(`${b}T00:00:00`)
+  let guard = 0
+  while (cur <= end && guard < 90) {
+    out.push(fmtDate(cur))
+    cur.setDate(cur.getDate() + 1)
+    guard++
+  }
+  return out
 }
 
 /* ---------- 查询表单 ---------- */
@@ -18,7 +39,7 @@ const form = reactive({
   dpt: 'LHW',
   arr: 'HGH',
   flightNo: '',
-  flightDate: tomorrow(),
+  flightDateRange: [tomorrow(), tomorrow()],
   cabin: '',
 })
 const loading = ref(false)
@@ -26,6 +47,16 @@ const hasCookie = ref(true)
 
 /* ---------- 结果与列 ---------- */
 const rows = ref([])
+/* 结果明细分页：新查询/切换历史时回到第 1 页 */
+const rowsPage = ref(1)
+const rowsPageSize = ref(10)
+const pagedRows = computed(() => {
+  const start = (rowsPage.value - 1) * rowsPageSize.value
+  return rows.value.slice(start, start + rowsPageSize.value)
+})
+watch(rows, () => {
+  rowsPage.value = 1
+})
 const useDefinedCols = ref(false)
 const viewingHistoryId = ref(null)
 
@@ -82,11 +113,20 @@ function addLog(text) {
 /* ---------- 航班信息快捷选择（预存查询参数） ---------- */
 const paramOptions = ref([])
 const selectedParams = ref([])
+const PARAMS_STORAGE_KEY = 'manual_selected_params' /* 记住上次选中 */
 
 async function loadParams() {
   try {
     const json = await apiParamList()
-    if (json.success) paramOptions.value = json.data.filter((p) => p.enabled)
+    if (json.success) {
+      paramOptions.value = json.data.filter((p) => p.enabled)
+      /* 恢复上次选中（仅保留仍存在且启用的选项） */
+      try {
+        const saved = JSON.parse(localStorage.getItem(PARAMS_STORAGE_KEY) || '[]')
+        const valid = Array.isArray(saved) ? saved.filter((id) => paramOptions.value.some((p) => p.id === id)) : []
+        if (valid.length) selectedParams.value = valid
+      } catch { /* 忽略损坏的本地存储 */ }
+    }
   } catch {
     /* 航班信息加载失败不阻塞页面 */
   }
@@ -102,6 +142,8 @@ function paramLabel(p) {
 
 /* 单选时自动填充表单；多选走批量执行 */
 watch(selectedParams, (ids) => {
+  /* 持久化：下次进页面自动恢复 */
+  localStorage.setItem(PARAMS_STORAGE_KEY, JSON.stringify(ids))
   if (ids.length === 1) {
     const p = paramOptions.value.find((x) => x.id === ids[0])
     if (p) {
@@ -121,15 +163,41 @@ async function run(save) {
   if (selectedParams.value.length > 1) {
     return runBatch(save)
   }
-  if (!form.dpt || !form.arr || !form.flightDate) {
-    ElMessage.warning('出发、到达、航班日期为必填项')
+  if (!form.dpt || !form.arr) {
+    ElMessage.warning('出发、到达为必填项')
     return
   }
+  const dates = eachDate(form.flightDateRange)
+  if (!dates.length) {
+    ElMessage.warning('请选择航班日期范围')
+    return
+  }
+  const base = {
+    domain: 'shm',
+    flightNo: form.flightNo,
+    dpt: form.dpt,
+    arr: form.arr,
+    cabin: form.cabin,
+    carrier: form.carrier,
+  }
+  /* 单日期：保持单次执行的完整结果展示；多日期：逐天执行 */
+  if (dates.length === 1) {
+    return runOnce(save, { ...base, flightDate: dates[0] })
+  }
+  const entries = dates.map((d) => ({
+    label: `${form.dpt}→${form.arr} ${d}`,
+    payload: { ...base, flightDate: d },
+  }))
+  return runSeries(save, entries)
+}
+
+/* 单次执行（单个航线 + 单个航班日期）：结果直接展示在表格 */
+async function runOnce(save, payload) {
   loading.value = true
   const action = save ? '抓取并入库' : '查询'
-  addLog(`${action}开始：${form.dpt}→${form.arr} ${form.flightDate}${form.flightNo ? ' 航班' + form.flightNo : ''}${form.carrier ? ' 航司' + form.carrier : ''}`)
+  addLog(`${action}开始：${payload.dpt}→${payload.arr} ${payload.flightDate}${payload.flightNo ? ' 航班' + payload.flightNo : ''}${payload.carrier ? ' 航司' + payload.carrier : ''}`)
   try {
-    const json = await apiScrapeRun({ ...form, domain: 'shm', save })
+    const json = await apiScrapeRun(payload)
     if (json.cookieInvalid) {
       addLog(`Cookie 已失效（目标站状态 ${json.status}），请到「系统设置」更新`)
       ElMessage.error('Cookie 已失效，请到系统设置更新')
@@ -155,38 +223,22 @@ async function run(save) {
   }
 }
 
-/* 多选航班信息：按选择顺序逐条执行；航班日期取表单值，其余字段取参数本身 */
-async function runBatch(save) {
-  if (!form.flightDate) {
-    ElMessage.warning('请先选择航班日期')
-    return
-  }
-  const items = paramOptions.value.filter((p) => selectedParams.value.includes(p.id))
-  if (!items.length) return
+/* 批量执行器：entries = [{ label, payload }]，逐条请求、汇总日志；Cookie 失效立即终止 */
+async function runSeries(save, entries) {
   loading.value = true
   const action = save ? '批量抓取并入库' : '批量查询'
-  addLog(`${action}开始：共 ${items.length} 条参数，航班日期 ${form.flightDate}`)
+  addLog(`${action}开始：共 ${entries.length} 次查询`)
   let ok = 0
   let fail = 0
   rows.value = []
   viewingHistoryId.value = null
   try {
-    for (const p of items) {
-      const payload = {
-        domain: p.domain || 'shm',
-        flightNo: p.flightNo || '',
-        dpt: p.dpt,
-        arr: p.arr,
-        flightDate: form.flightDate,
-        cabin: p.cabin || '',
-        carrier: p.carrier || '',
-        save,
-      }
-      addLog(`  [${p.name}] ${p.dpt}→${p.arr} 执行中…`)
+    for (const { label, payload } of entries) {
+      addLog(`  [${label}] 执行中…`)
       try {
         const json = await apiScrapeRun(payload)
         if (json.cookieInvalid) {
-          addLog(`Cookie 已失效，批量任务提前终止（已完成 ${ok} 条，剩余 ${items.length - ok - fail} 条未执行）`)
+          addLog(`Cookie 已失效，批量任务提前终止（已完成 ${ok} 条，剩余 ${entries.length - ok - fail} 条未执行）`)
           ElMessage.error('Cookie 已失效，请到系统设置更新')
           fail++
           break
@@ -195,22 +247,52 @@ async function runBatch(save) {
         if (extracted) {
           rows.value = rows.value.concat(extracted)
           useDefinedCols.value = 'orderList' in (json.raw?.data || {})
-          addLog(`  [${p.name}] 完成：${extracted.length} 行${json.historyId ? `，已入库（历史 #${json.historyId}）` : ''}`)
+          addLog(`  [${label}] 完成：${extracted.length} 行${json.historyId ? `，已入库（历史 #${json.historyId}）` : ''}`)
           ok++
         } else {
-          addLog(`  [${p.name}] 完成：未识别到表格数据（状态 ${json.status}）`)
+          addLog(`  [${label}] 完成：未识别到表格数据（状态 ${json.status}）`)
           fail++
         }
       } catch (e) {
-        addLog(`  [${p.name}] 失败：${e.message}`)
+        addLog(`  [${label}] 失败：${e.message}`)
         fail++
       }
     }
     if (save && ok) loadHistory()
-    addLog(`${action}结束：成功 ${ok} 条，失败 ${fail} 条${ok ? `，表格共 ${rows.value.length} 行` : ''}`)
+    addLog(`${action}结束：成功 ${ok} 次，失败 ${fail} 次${ok ? `，表格共 ${rows.value.length} 行` : ''}`)
   } finally {
     loading.value = false
   }
+}
+
+/* 多选航班信息：每条航线 × 航班日期范围内每一天，逐个执行 */
+async function runBatch(save) {
+  const dates = eachDate(form.flightDateRange)
+  if (!dates.length) {
+    ElMessage.warning('请先选择航班日期范围')
+    return
+  }
+  const items = paramOptions.value.filter((p) => selectedParams.value.includes(p.id))
+  if (!items.length) return
+  const entries = []
+  for (const p of items) {
+    for (const d of dates) {
+      entries.push({
+        label: `${p.name} ${d}`,
+        payload: {
+          domain: p.domain || 'shm',
+          flightNo: p.flightNo || '',
+          dpt: p.dpt,
+          arr: p.arr,
+          flightDate: d,
+          cabin: p.cabin || '',
+          carrier: p.carrier || '',
+          save,
+        },
+      })
+    }
+  }
+  return runSeries(save, entries)
 }
 
 /* 从目标站返回的 JSON 中提取行数据，兼容常见包装结构 */
@@ -244,18 +326,29 @@ function exportRows() {
   }
   const headers = columns.value.map((c) => c.label)
   const data = rows.value.map((r) => columns.value.map((c) => fmt(c, r)))
-  downloadCsv(`比价记录_${form.dpt}-${form.arr}_${form.flightDate}.csv`, headers, data)
+  downloadCsv(`比价记录_${form.dpt}-${form.arr}_${form.flightDateRange?.[0] || ''}至${form.flightDateRange?.[1] || ''}.csv`, headers, data)
   addLog(`导出记录：${rows.value.length} 行`)
 }
 
 /* ---------- 抓取历史（查看抓取的数据） ---------- */
 const historyList = ref([])
 const historyLoading = ref(false)
+const historyPage = ref(1)
+const historyPageSize = ref(10)
+const pagedHistory = computed(() => {
+  const start = (historyPage.value - 1) * historyPageSize.value
+  return historyList.value.slice(start, start + historyPageSize.value)
+})
 
 async function loadHistory() {
   try {
     const json = await apiHistoryList(50)
-    if (json.success) historyList.value = json.data
+    if (json.success) {
+      historyList.value = json.data
+      /* 删除后当前页可能超出范围，回退到最后一页 */
+      const maxPage = Math.max(1, Math.ceil(historyList.value.length / historyPageSize.value))
+      if (historyPage.value > maxPage) historyPage.value = maxPage
+    }
   } catch {
     /* 数据库不可用时静默忽略 */
   }
@@ -336,12 +429,10 @@ onMounted(async () => {
           <el-select
             v-model="selectedParams"
             multiple
-            collapse-tags
-            collapse-tags-tooltip
             filterable
             clearable
             placeholder="可多选：单选自动填充，多选批量执行"
-            style="width: 280px"
+            class="params-select"
           >
             <el-option
               v-for="p in paramOptions"
@@ -364,7 +455,16 @@ onMounted(async () => {
           <el-input v-model="form.flightNo" placeholder="可空" style="width: 130px" />
         </el-form-item>
         <el-form-item label="航班日期" required>
-          <el-date-picker v-model="form.flightDate" type="date" value-format="YYYY-MM-DD" style="width: 150px" />
+          <el-date-picker
+            v-model="form.flightDateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始"
+            end-placeholder="结束"
+            value-format="YYYY-MM-DD"
+            :clearable="false"
+            style="width: 260px"
+          />
         </el-form-item>
         <el-form-item label="舱位">
           <el-input v-model="form.cabin" placeholder="可空，如 Y" maxlength="1" style="width: 100px" />
@@ -394,7 +494,7 @@ onMounted(async () => {
           <el-button size="small" @click="loadHistory">刷新</el-button>
         </div>
       </template>
-      <el-table :data="historyList" size="small" v-loading="historyLoading" @row-click="viewHistory" class="click-table">
+      <el-table :data="pagedHistory" size="small" v-loading="historyLoading" @row-click="viewHistory" class="click-table">
         <el-table-column prop="id" label="#" width="60" />
         <el-table-column label="航线" width="120">
           <template #default="{ row }">{{ row.dpt }}→{{ row.arr }}</template>
@@ -409,6 +509,17 @@ onMounted(async () => {
           </template>
         </el-table-column>
       </el-table>
+      <div class="pager">
+        <el-pagination
+          v-model:current-page="historyPage"
+          v-model:page-size="historyPageSize"
+          :total="historyList.length"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          background
+          small
+        />
+      </div>
     </el-card>
 
     <!-- 结果表格 -->
@@ -416,7 +527,7 @@ onMounted(async () => {
       <div v-if="viewingHistoryId" class="source-tip">
         正在查看历史记录 #{{ viewingHistoryId }}（来自数据库，非实时数据）
       </div>
-      <el-table :data="rows" size="small" border stripe v-loading="loading">
+      <el-table :data="pagedRows" size="small" border stripe v-loading="loading">
         <el-table-column
           v-for="col in columns"
           :key="col.key"
@@ -427,6 +538,17 @@ onMounted(async () => {
           <template #default="{ row }">{{ fmt(col, row) }}</template>
         </el-table-column>
       </el-table>
+      <div v-if="rows.length > rowsPageSize" class="pager">
+        <el-pagination
+          v-model:current-page="rowsPage"
+          v-model:page-size="rowsPageSize"
+          :total="rows.length"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          background
+          small
+        />
+      </div>
     </el-card>
 
     <!-- 日志输出区 -->
@@ -450,6 +572,25 @@ onMounted(async () => {
 }
 .query-form :deep(.el-form-item) {
   margin-bottom: 8px;
+}
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+/* 航班信息多选框：加宽，选中标签全部平铺展示、自动换行撑高 */
+.params-select {
+  width: 460px;
+}
+.params-select :deep(.el-select__selection) {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+.params-select :deep(.el-select__wrapper) {
+  min-height: 40px;
+  height: auto;
+  max-height: none;
+  align-items: flex-start;
 }
 .actions {
   display: flex;

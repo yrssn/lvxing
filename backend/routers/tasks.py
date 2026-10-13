@@ -19,8 +19,12 @@ class TaskIn(BaseModel):
     name: str
     intervalDays: int = 1
     timeOfDay: str  # "HH:MM"
+    weekdays: str = ""  # 每周执行日 "0,3,5"（0=周一），空=按 intervalDays
+    windowMode: str = "rolling"  # rolling=滚动窗口 fixed=固定日期段
     daysAhead: int = 1
-    daysAheadTo: int = 0  # 抓取日期范围终点（含），0/缺省=仅抓 daysAhead 单日
+    daysAheadTo: int = 0  # rolling：范围终点（含），0/缺省=仅抓 daysAhead 单日
+    fixedDateFrom: str = ""  # fixed："YYYY-MM-DD"
+    fixedDateTo: str = ""  # fixed：结束日期（含）
     minDelaySec: int = 3
     maxDelaySec: int = 10
     enabled: bool = True
@@ -37,13 +41,40 @@ def _parse_time(s: str) -> time_type:
     return time_type(h, mi)
 
 
+def _parse_date(s: str, field: str):
+    try:
+        return datetime.strptime((s or "").strip(), "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"{field}格式应为 YYYY-MM-DD")
+
+
 def _validate(body: TaskIn):
     if not (1 <= body.intervalDays <= 30):
         raise HTTPException(status_code=400, detail="间隔天数需在 1-30 之间")
-    if not (0 <= body.daysAhead <= 90):
-        raise HTTPException(status_code=400, detail="抓取日期偏移需在 0-90 之间")
-    if body.daysAheadTo and not (body.daysAhead <= body.daysAheadTo <= 90):
-        raise HTTPException(status_code=400, detail="抓取日期范围终点需不小于起点且不超过 90")
+    if body.windowMode not in ("rolling", "fixed"):
+        raise HTTPException(status_code=400, detail="抓取日期窗口模式不合法")
+    if body.windowMode == "rolling":
+        if not (0 <= body.daysAhead <= 90):
+            raise HTTPException(status_code=400, detail="抓取日期偏移需在 0-90 之间")
+        if body.daysAheadTo and not (body.daysAhead <= body.daysAheadTo <= 90):
+            raise HTTPException(status_code=400, detail="抓取日期范围终点需不小于起点且不超过 90")
+    else:
+        if not (body.fixedDateFrom or "").strip():
+            raise HTTPException(status_code=400, detail="固定日期段必须选择起始日期")
+        _parse_date(body.fixedDateFrom, "起始日期")
+        if (body.fixedDateTo or "").strip():
+            d0 = _parse_date(body.fixedDateFrom, "起始日期")
+            d1 = _parse_date(body.fixedDateTo, "结束日期")
+            if d1 < d0:
+                raise HTTPException(status_code=400, detail="结束日期不能早于起始日期")
+            if (d1 - d0).days > 90:
+                raise HTTPException(status_code=400, detail="固定日期段最长 90 天")
+    # weekdays 非空时按每周模式，intervalDays 不生效
+    if (body.weekdays or "").strip():
+        for part in body.weekdays.split(","):
+            part = part.strip()
+            if part and (not part.isdigit() or not 0 <= int(part) <= 6):
+                raise HTTPException(status_code=400, detail="每周执行日格式不合法")
     if body.minDelaySec < 0 or body.maxDelaySec < 0:
         raise HTTPException(status_code=400, detail="延时秒数不能为负")
     if body.minDelaySec > body.maxDelaySec:
@@ -58,8 +89,12 @@ def _serialize(t: ScrapeTask, param_ids: list) -> dict:
         "name": t.name,
         "intervalDays": t.interval_days,
         "timeOfDay": t.time_of_day.strftime("%H:%M") if t.time_of_day else "",
+        "weekdays": t.weekdays or "",
+        "windowMode": t.window_mode or "rolling",
         "daysAhead": t.days_ahead if t.days_ahead is not None else 1,
         "daysAheadTo": t.days_ahead_to or 0,
+        "fixedDateFrom": t.fixed_date_from.strftime("%Y-%m-%d") if t.fixed_date_from else "",
+        "fixedDateTo": t.fixed_date_to.strftime("%Y-%m-%d") if t.fixed_date_to else "",
         "enabled": bool(t.enabled),
         "status": t.status,
         "nextRunAt": t.next_run_at.strftime("%Y-%m-%d %H:%M:%S") if t.next_run_at else "",
@@ -106,14 +141,18 @@ def create_task(body: TaskIn, user: User = Depends(auth.get_current_user)):
         t = ScrapeTask(
             name=body.name.strip(),
             interval_days=body.intervalDays,
+            weekdays=(body.weekdays or "").strip(),
             time_of_day=tod,
+            window_mode=body.windowMode,
             days_ahead=body.daysAhead,
             days_ahead_to=body.daysAheadTo or None,
+            fixed_date_from=_parse_date(body.fixedDateFrom, "起始日期") if body.windowMode == "fixed" and (body.fixedDateFrom or "").strip() else None,
+            fixed_date_to=_parse_date(body.fixedDateTo, "结束日期") if body.windowMode == "fixed" and (body.fixedDateTo or "").strip() else None,
             enabled=1 if body.enabled else 0,
             status="idle",
             min_delay_sec=body.minDelaySec,
             max_delay_sec=body.maxDelaySec,
-            next_run_at=scheduler.compute_initial_next_run(body.intervalDays, tod) if body.enabled else None,
+            next_run_at=scheduler.compute_initial_next_run(body.intervalDays, tod, body.weekdays) if body.enabled else None,
         )
         db.add(t)
         db.flush()
@@ -138,13 +177,17 @@ def update_task(task_id: int, body: TaskIn, user: User = Depends(auth.get_curren
             raise HTTPException(status_code=409, detail="任务正在执行，请稍后再修改")
         t.name = body.name.strip()
         t.interval_days = body.intervalDays
+        t.weekdays = (body.weekdays or "").strip()
         t.time_of_day = tod
+        t.window_mode = body.windowMode
         t.days_ahead = body.daysAhead
         t.days_ahead_to = body.daysAheadTo or None
+        t.fixed_date_from = _parse_date(body.fixedDateFrom, "起始日期") if body.windowMode == "fixed" and (body.fixedDateFrom or "").strip() else None
+        t.fixed_date_to = _parse_date(body.fixedDateTo, "结束日期") if body.windowMode == "fixed" and (body.fixedDateTo or "").strip() else None
         t.min_delay_sec = body.minDelaySec
         t.max_delay_sec = body.maxDelaySec
         t.enabled = 1 if body.enabled else 0
-        t.next_run_at = scheduler.compute_initial_next_run(body.intervalDays, tod) if body.enabled else None
+        t.next_run_at = scheduler.compute_initial_next_run(body.intervalDays, tod, body.weekdays) if body.enabled else None
         _set_params(db, task_id, body.paramIds)
         db.commit()
         return {"success": True}
@@ -180,7 +223,7 @@ def toggle_task(task_id: int, body: dict, user: User = Depends(auth.get_current_
             raise HTTPException(status_code=404, detail="任务不存在")
         t.enabled = 1 if enabled else 0
         if enabled:
-            t.next_run_at = scheduler.compute_initial_next_run(t.interval_days, t.time_of_day)
+            t.next_run_at = scheduler.compute_initial_next_run(t.interval_days, t.time_of_day, t.weekdays)
         db.commit()
         return {"success": True, "data": {"enabled": enabled, "nextRunAt": t.next_run_at.strftime("%Y-%m-%d %H:%M:%S") if t.next_run_at else ""}}
     finally:

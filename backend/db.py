@@ -36,6 +36,10 @@ _MIGRATION_STATEMENTS = [
     "ALTER TABLE bidding_record ADD INDEX idx_br_dpt_arr (dpt, arr)",
     "ALTER TABLE scrape_task ADD COLUMN days_ahead INT NOT NULL DEFAULT 1",
     "ALTER TABLE scrape_task ADD COLUMN days_ahead_to INT NULL",
+    "ALTER TABLE scrape_task ADD COLUMN window_mode VARCHAR(10) NOT NULL DEFAULT 'rolling'",
+    "ALTER TABLE scrape_task ADD COLUMN fixed_date_from DATE NULL",
+    "ALTER TABLE scrape_task ADD COLUMN fixed_date_to DATE NULL",
+    "ALTER TABLE scrape_task ADD COLUMN weekdays VARCHAR(20) NOT NULL DEFAULT ''",
     "ALTER TABLE user ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0",
 ]
 

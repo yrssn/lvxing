@@ -23,14 +23,10 @@ def _apply_filters(q, dpt, arr, flightNo, carrier, source, crawlFrom, crawlTo, f
         q = q.filter(BiddingRecord.flight_no.startswith(carrier.strip().upper()))
     if source in ("manual", "task"):
         q = q.filter(BiddingRecord.source == source)
-    # 政策类型多选：任一匹配（每个值模糊匹配，OR 连接）
-    conds = [
-        BiddingRecord.policy_type.like(f"%{t.strip()}%")
-        for t in (policyTypes or [])
-        if (t or "").strip()
-    ]
-    if conds:
-        q = q.filter(or_(*conds))
+    # 政策类型多选：精确匹配（任选其一即命中）
+    types = [t.strip() for t in (policyTypes or []) if (t or "").strip()]
+    if types:
+        q = q.filter(BiddingRecord.policy_type.in_(types))
     if flightDateFrom.strip():
         q = q.filter(BiddingRecord.flight_date >= flightDateFrom.strip())
     if flightDateTo.strip():
