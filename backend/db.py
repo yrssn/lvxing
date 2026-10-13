@@ -35,6 +35,7 @@ _MIGRATION_STATEMENTS = [
     "ALTER TABLE bidding_record ADD INDEX idx_br_created_at (created_at)",
     "ALTER TABLE bidding_record ADD INDEX idx_br_dpt_arr (dpt, arr)",
     "ALTER TABLE scrape_task ADD COLUMN days_ahead INT NOT NULL DEFAULT 1",
+    "ALTER TABLE scrape_task ADD COLUMN days_ahead_to INT NULL",
     "ALTER TABLE user ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0",
 ]
 

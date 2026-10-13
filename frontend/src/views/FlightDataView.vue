@@ -269,7 +269,7 @@ onMounted(() => {
           </el-select>
         </el-form-item>
         <el-form-item label="来源">
-          <el-radio-group v-model="filters.source">
+          <el-radio-group v-model="filters.source" @change="search">
             <el-radio-button value="">全部</el-radio-button>
             <el-radio-button value="manual">手动</el-radio-button>
             <el-radio-button value="task">定时</el-radio-button>
@@ -284,6 +284,7 @@ onMounted(() => {
             end-placeholder="结束"
             value-format="YYYY-MM-DD"
             style="width: 240px"
+            @change="search"
           />
         </el-form-item>
         <el-form-item label="抓取时间">
@@ -295,6 +296,7 @@ onMounted(() => {
             end-placeholder="结束"
             value-format="YYYY-MM-DD"
             style="width: 240px"
+            @change="search"
           />
         </el-form-item>
         <el-form-item>
