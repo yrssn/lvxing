@@ -1,8 +1,8 @@
 <script setup>
-import { computed, onMounted, reactive, ref, nextTick } from 'vue'
+import { computed, onMounted, reactive, ref, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { apiScrapeRun, apiHistoryList, apiHistoryRecords, apiHistoryDelete, apiGetCookie } from '../api'
+import { apiScrapeRun, apiHistoryList, apiHistoryRecords, apiHistoryDelete, apiGetCookie, apiParamList } from '../api'
 import { downloadCsv } from '../utils/csv'
 
 const router = useRouter()
@@ -11,6 +11,33 @@ function tomorrow() {
   const d = new Date(Date.now() + 86400000)
   return d.toISOString().slice(0, 10)
 }
+
+/* ---------- 航班信息快捷选择 ---------- */
+const paramOptions = ref([])
+const selectedParams = ref([])
+
+async function loadParams() {
+  try {
+    const json = await apiParamList()
+    paramOptions.value = json.data
+  } catch {
+    /* 航班信息加载失败不阻塞页面 */
+  }
+}
+
+/* 单选时自动填充表单；多选走批量执行 */
+watch(selectedParams, (ids) => {
+  if (ids.length === 1) {
+    const p = paramOptions.value.find((x) => x.id === ids[0])
+    if (p) {
+      form.carrier = p.carrier || ''
+      form.dpt = p.dpt || ''
+      form.arr = p.arr || ''
+      form.flightNo = p.flightNo || ''
+      form.cabin = p.cabin || ''
+    }
+  }
+})
 
 /* ---------- 查询表单 ---------- */
 const form = reactive({
@@ -81,6 +108,9 @@ function addLog(text) {
 
 /* ---------- 查询 / 抓取入库 ---------- */
 async function run(save) {
+  if (selectedParams.value.length > 1) {
+    return runBatch(save)
+  }
   if (!form.dpt || !form.arr || !form.flightDate) {
     ElMessage.warning('出发、到达、航班日期为必填项')
     return
@@ -110,6 +140,64 @@ async function run(save) {
   } catch (e) {
     addLog(`${action}失败：${e.message}`)
     ElMessage.error(e.message)
+  } finally {
+    loading.value = false
+  }
+}
+
+/* 多选航班信息：按选择顺序逐条执行；航班日期取表单值，其余字段取参数本身 */
+async function runBatch(save) {
+  if (!form.flightDate) {
+    ElMessage.warning('请先选择航班日期')
+    return
+  }
+  const items = paramOptions.value.filter((p) => selectedParams.value.includes(p.id))
+  if (!items.length) return
+  loading.value = true
+  const action = save ? '批量抓取并入库' : '批量查询'
+  addLog(`${action}开始：共 ${items.length} 条参数，航班日期 ${form.flightDate}`)
+  let ok = 0
+  let fail = 0
+  rows.value = []
+  viewingHistoryId.value = null
+  try {
+    for (const p of items) {
+      const payload = {
+        domain: p.domain || 'shm',
+        flightNo: p.flightNo || '',
+        dpt: p.dpt,
+        arr: p.arr,
+        flightDate: form.flightDate,
+        cabin: p.cabin || '',
+        carrier: p.carrier || '',
+        save,
+      }
+      addLog(`  [${p.name}] ${p.dpt}→${p.arr} 执行中…`)
+      try {
+        const json = await apiScrapeRun(payload)
+        if (json.cookieInvalid) {
+          addLog(`Cookie 已失效，批量任务提前终止（已完成 ${ok} 条，剩余 ${items.length - ok - fail} 条未执行）`)
+          ElMessage.error('Cookie 已失效，请到系统设置更新')
+          fail++
+          break
+        }
+        const extracted = extractRows(json.raw)
+        if (extracted) {
+          rows.value = rows.value.concat(extracted)
+          useDefinedCols.value = 'orderList' in (json.raw?.data || {})
+          addLog(`  [${p.name}] 完成：${extracted.length} 行${json.historyId ? `，已入库（历史 #${json.historyId}）` : ''}`)
+          ok++
+        } else {
+          addLog(`  [${p.name}] 完成：未识别到表格数据（状态 ${json.status}）`)
+          fail++
+        }
+      } catch (e) {
+        addLog(`  [${p.name}] 失败：${e.message}`)
+        fail++
+      }
+    }
+    if (save && ok) loadHistory()
+    addLog(`${action}结束：成功 ${ok} 条，失败 ${fail} 条${ok ? `，表格共 ${rows.value.length} 行` : ''}`)
   } finally {
     loading.value = false
   }
@@ -206,6 +294,7 @@ async function removeHistory(item) {
 
 onMounted(async () => {
   loadHistory()
+  loadParams()
   try {
     const json = await apiGetCookie()
     hasCookie.value = !!json.data?.cookie
@@ -233,6 +322,25 @@ onMounted(async () => {
     <!-- 查询表单 -->
     <el-card shadow="never">
       <el-form inline class="query-form">
+        <el-form-item label="航班信息">
+          <el-select
+            v-model="selectedParams"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            filterable
+            clearable
+            placeholder="可多选：单选自动填充，多选批量执行"
+            style="width: 280px"
+          >
+            <el-option
+              v-for="p in paramOptions"
+              :key="p.id"
+              :label="`${p.name}（${p.dpt}→${p.arr}）${p.enabled ? '' : ' [已停用]'}`"
+              :value="p.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="航司">
           <el-input v-model="form.carrier" placeholder="航司二字码，可空" maxlength="2" style="width: 130px" />
         </el-form-item>
