@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { apiDataRecords, apiDataTrend } from '../api'
+import { apiDataRecords, apiDataTrend, apiDataPolicyTypes, apiParamList } from '../api'
 import { downloadCsv } from '../utils/csv'
 import TrendChart from '../components/TrendChart.vue'
 
@@ -14,6 +14,7 @@ const filters = reactive({
   dpt: '',
   arr: '',
   flightNo: '',
+  policyType: [],
   source: '',
   flightDateRange: null, // [from, to] 航班日期
   crawlRange: null, // [from, to] 抓取时间
@@ -27,6 +28,7 @@ function buildFilterParams() {
     dpt: filters.dpt,
     arr: filters.arr,
     flightNo: filters.flightNo,
+    policyType: filters.policyType,
     source: filters.source,
     flightDateFrom: range[0] || '',
     flightDateTo: range[1] || '',
@@ -57,10 +59,23 @@ function resetFilters() {
   filters.dpt = ''
   filters.arr = ''
   filters.flightNo = ''
+  filters.policyType = []
   filters.source = ''
   filters.flightDateRange = null
   filters.crawlRange = null
   search()
+}
+
+/* ---------- 政策类型选项（来自数据库 distinct） ---------- */
+const policyTypeOptions = ref([])
+
+async function loadPolicyTypes() {
+  try {
+    const json = await apiDataPolicyTypes()
+    if (json.success) policyTypeOptions.value = json.data
+  } catch {
+    /* ignore */
+  }
 }
 
 /* ---------- 导出当前筛选全部数据 ---------- */
@@ -100,18 +115,94 @@ const trendVisible = ref(false)
 const trendLoading = ref(false)
 const trendData = ref([])
 
+/* 走势弹窗内筛选：航班信息下拉 / 航班号 + 固定航班日期范围（每一天一个点） */
+const paramList = ref([])
+const trendParamId = ref(null)
+const trendFlightNo = ref('')
+const trendDateRange = ref(defaultTrendRange())
+
+function defaultTrendRange() {
+  const fmt = (d) => d.toISOString().slice(0, 10)
+  const start = new Date()
+  const end = new Date(Date.now() + 14 * 86400000)
+  return [fmt(start), fmt(end)]
+}
+
+async function loadParams() {
+  try {
+    const json = await apiParamList()
+    if (json.success) paramList.value = json.data.filter((p) => p.enabled)
+  } catch {
+    /* ignore */
+  }
+}
+
+function paramLabel(p) {
+  const parts = [p.dpt, '→', p.arr]
+  if (p.flightNo) parts.push(` ${p.flightNo}`)
+  if (p.cabin) parts.push(` ${p.cabin}舱`)
+  if (p.carrier) parts.push(` 航司${p.carrier}`)
+  return parts.join('')
+}
+
+function trendBaseParams() {
+  const base = buildFilterParams()
+  const range = trendDateRange.value || []
+  base.flightDateFrom = range[0] || ''
+  base.flightDateTo = range[1] || ''
+  const p = paramList.value.find((x) => x.id === trendParamId.value)
+  if (p) {
+    base.dpt = p.dpt
+    base.arr = p.arr
+    base.flightNo = trendFlightNo.value.trim() || p.flightNo || ''
+    base.carrier = p.carrier || ''
+  } else {
+    base.flightNo = trendFlightNo.value.trim()
+  }
+  return base
+}
+
 const trendRoute = computed(() => {
-  const f = buildFilterParams()
-  if (f.dpt || f.arr) return `${f.dpt || '*'}→${f.arr || '*'}`
-  return '全部航线'
+  const f = trendBaseParams()
+  const parts = []
+  parts.push(`${f.dpt || '*'}→${f.arr || '*'}`)
+  if (f.flightNo) parts.push(`航班${f.flightNo}`)
+  if (f.carrier) parts.push(`航司${f.carrier}`)
+  const onlyDefault = !f.dpt && !f.arr && !f.flightNo && !f.carrier
+  return onlyDefault ? '全部航线' : parts.join(' · ')
 })
 
-async function showTrend() {
-  trendVisible.value = true
+/* 把日期范围内每一天补全为 X 轴（没抓取数据的天为空点，走势断开） */
+function fillDateGaps(list, from, to) {
+  if (!from || !to) return list
+  const map = new Map(list.map((d) => [d.flightDate, d]))
+  const out = []
+  const cur = new Date(`${from}T00:00:00`)
+  const end = new Date(`${to}T00:00:00`)
+  let guard = 0
+  while (cur <= end && guard < 400) {
+    const key = cur.toISOString().slice(0, 10)
+    out.push(
+      map.get(key) || {
+        flightDate: key,
+        minSellPrice: null,
+        minSelfPrice: null,
+        sellCabin: '',
+        selfCabin: '',
+      }
+    )
+    cur.setDate(cur.getDate() + 1)
+    guard++
+  }
+  return out
+}
+
+async function loadTrend() {
   trendLoading.value = true
   try {
-    const json = await apiDataTrend(buildFilterParams())
-    trendData.value = json.data
+    const params = trendBaseParams()
+    const json = await apiDataTrend(params)
+    trendData.value = fillDateGaps(json.data, params.flightDateFrom, params.flightDateTo)
     if (!json.data.length) ElMessage.info('当前筛选下没有可用于走势图的数据')
   } catch (e) {
     ElMessage.error(e.message)
@@ -120,10 +211,19 @@ async function showTrend() {
   }
 }
 
+function showTrend() {
+  trendVisible.value = true
+  loadTrend()
+}
+
 const sourceTag = { manual: 'info', task: 'success' }
 const sourceText = { manual: '手动', task: '定时' }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadParams()
+  loadPolicyTypes()
+})
 </script>
 
 <template>
@@ -152,6 +252,21 @@ onMounted(load)
         </el-form-item>
         <el-form-item label="航班号">
           <el-input v-model="filters.flightNo" placeholder="模糊匹配" clearable style="width: 120px" @keyup.enter="search" />
+        </el-form-item>
+        <el-form-item label="政策类型">
+          <el-select
+            v-model="filters.policyType"
+            placeholder="全部，可多选"
+            clearable
+            filterable
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            style="width: 220px"
+            @change="search"
+          >
+            <el-option v-for="t in policyTypeOptions" :key="t" :label="t" :value="t" />
+          </el-select>
         </el-form-item>
         <el-form-item label="来源">
           <el-radio-group v-model="filters.source">
@@ -231,6 +346,46 @@ onMounted(load)
 
     <!-- 走势图 -->
     <el-dialog v-model="trendVisible" :title="`价格走势（${trendRoute}，按航班日期聚合最低价）`" width="860px">
+      <el-form inline class="trend-filters">
+        <el-form-item label="航班信息">
+          <el-select
+            v-model="trendParamId"
+            placeholder="全部航线"
+            clearable
+            filterable
+            style="width: 240px"
+            @change="loadTrend"
+          >
+            <el-option v-for="p in paramList" :key="p.id" :label="`${p.name}（${paramLabel(p)}）`" :value="p.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="航班号">
+          <el-input
+            v-model="trendFlightNo"
+            placeholder="可空，模糊匹配"
+            clearable
+            style="width: 150px"
+            @keyup.enter="loadTrend"
+            @clear="loadTrend"
+          />
+        </el-form-item>
+        <el-form-item label="航班日期">
+          <el-date-picker
+            v-model="trendDateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始"
+            end-placeholder="结束"
+            value-format="YYYY-MM-DD"
+            :clearable="false"
+            style="width: 240px"
+            @change="loadTrend"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :loading="trendLoading" @click="loadTrend">查询走势</el-button>
+        </el-form-item>
+      </el-form>
       <div v-loading="trendLoading">
         <TrendChart v-if="trendData.length" :data="trendData" />
         <el-empty v-else-if="!trendLoading" description="暂无数据" />
@@ -250,6 +405,12 @@ onMounted(load)
   gap: 10px;
 }
 .filters :deep(.el-form-item) {
+  margin-bottom: 8px;
+}
+.trend-filters {
+  margin-bottom: 4px;
+}
+.trend-filters :deep(.el-form-item) {
   margin-bottom: 8px;
 }
 .pager {

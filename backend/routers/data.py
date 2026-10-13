@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func
+from sqlalchemy import or_
 
 import auth
 from db import SessionLocal
@@ -12,7 +12,7 @@ from models import BiddingRecord, User
 router = APIRouter(tags=["data"])
 
 
-def _apply_filters(q, dpt, arr, flightNo, carrier, source, crawlFrom, crawlTo, flightDateFrom="", flightDateTo=""):
+def _apply_filters(q, dpt, arr, flightNo, carrier, source, crawlFrom, crawlTo, flightDateFrom="", flightDateTo="", policyTypes=None):
     if dpt.strip():
         q = q.filter(BiddingRecord.dpt == dpt.strip().upper())
     if arr.strip():
@@ -23,6 +23,14 @@ def _apply_filters(q, dpt, arr, flightNo, carrier, source, crawlFrom, crawlTo, f
         q = q.filter(BiddingRecord.flight_no.startswith(carrier.strip().upper()))
     if source in ("manual", "task"):
         q = q.filter(BiddingRecord.source == source)
+    # 政策类型多选：任一匹配（每个值模糊匹配，OR 连接）
+    conds = [
+        BiddingRecord.policy_type.like(f"%{t.strip()}%")
+        for t in (policyTypes or [])
+        if (t or "").strip()
+    ]
+    if conds:
+        q = q.filter(or_(*conds))
     if flightDateFrom.strip():
         q = q.filter(BiddingRecord.flight_date >= flightDateFrom.strip())
     if flightDateTo.strip():
@@ -63,6 +71,23 @@ def _serialize(r: BiddingRecord) -> dict:
     }
 
 
+@router.get("/api/data/policy-types")
+def policy_types(user: User = Depends(auth.get_current_user)):
+    """政策类型去重选项（供筛选下拉，来自数据库）"""
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(BiddingRecord.policy_type)
+            .filter(BiddingRecord.policy_type != "")
+            .distinct()
+            .order_by(BiddingRecord.policy_type)
+            .all()
+        )
+        return {"success": True, "data": [r[0] for r in rows]}
+    finally:
+        db.close()
+
+
 @router.get("/api/data/records")
 def records(
     dpt: str = "",
@@ -70,6 +95,7 @@ def records(
     flightNo: str = "",
     carrier: str = "",
     source: str = "",
+    policyType: list[str] = Query(default=[]),
     flightDateFrom: str = "",
     flightDateTo: str = "",
     crawlFrom: str = "",
@@ -81,7 +107,7 @@ def records(
     """按条件分页浏览已入库的抓取数据"""
     db = SessionLocal()
     try:
-        q = _apply_filters(db.query(BiddingRecord), dpt, arr, flightNo, carrier, source, crawlFrom, crawlTo, flightDateFrom, flightDateTo)
+        q = _apply_filters(db.query(BiddingRecord), dpt, arr, flightNo, carrier, source, crawlFrom, crawlTo, flightDateFrom, flightDateTo, policyType)
         total = q.count()
         items = (
             q.order_by(BiddingRecord.created_at.desc(), BiddingRecord.id.desc())
@@ -101,39 +127,47 @@ def trend(
     flightNo: str = "",
     carrier: str = "",
     source: str = "",
+    policyType: list[str] = Query(default=[]),
     flightDateFrom: str = "",
     flightDateTo: str = "",
     crawlFrom: str = "",
     crawlTo: str = "",
     user: User = Depends(auth.get_current_user),
 ):
-    """走势图数据：按航班日期聚合的最低价（基于数据库）"""
+    """走势图数据：按航班日期聚合的最低价（基于数据库），并带出最低价对应舱位"""
     db = SessionLocal()
     try:
-        q = _apply_filters(db.query(BiddingRecord), dpt, arr, flightNo, carrier, source, crawlFrom, crawlTo, flightDateFrom, flightDateTo)
+        q = _apply_filters(db.query(BiddingRecord), dpt, arr, flightNo, carrier, source, crawlFrom, crawlTo, flightDateFrom, flightDateTo, policyType)
         q = q.filter(BiddingRecord.flight_date != "")
         rows = (
             q.with_entities(
                 BiddingRecord.flight_date,
-                func.min(BiddingRecord.sell_price).label("min_sell"),
-                func.min(BiddingRecord.self_price).label("min_self"),
-                func.count(BiddingRecord.id).label("cnt"),
+                BiddingRecord.sell_price,
+                BiddingRecord.external_cabin,
+                BiddingRecord.self_price,
+                BiddingRecord.cabin,
             )
-            .group_by(BiddingRecord.flight_date)
-            .order_by(BiddingRecord.flight_date)
             .all()
         )
-        return {
-            "success": True,
-            "data": [
+        # 按航班日期分组，Python 内取最低价对应行（SQL 的 MIN 拿不到同行舱位）
+        grouped: dict = {}
+        for fd, sell, ext_cabin, self_p, cabin in rows:
+            grouped.setdefault(fd, []).append((sell, ext_cabin or "", self_p, cabin or ""))
+        data = []
+        for fd in sorted(grouped):
+            items = grouped[fd]
+            sell_row = min((r for r in items if r[0] is not None), key=lambda r: r[0], default=None)
+            self_row = min((r for r in items if r[2] is not None), key=lambda r: r[2], default=None)
+            data.append(
                 {
-                    "flightDate": r[0],
-                    "minSellPrice": r[1],
-                    "minSelfPrice": r[2],
-                    "recordCount": r[3],
+                    "flightDate": fd,
+                    "minSellPrice": sell_row[0] if sell_row else None,
+                    "sellCabin": (sell_row[1] or sell_row[3]) if sell_row else "",
+                    "minSelfPrice": self_row[2] if self_row else None,
+                    "selfCabin": self_row[3] if self_row else "",
+                    "recordCount": len(items),
                 }
-                for r in rows
-            ],
-        }
+            )
+        return {"success": True, "data": data}
     finally:
         db.close()

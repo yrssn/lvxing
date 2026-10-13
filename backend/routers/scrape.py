@@ -44,5 +44,6 @@ async def run(body: ScrapeIn, user: User = Depends(auth.get_current_user)):
         "historyId": result["historyId"],
         "rowCount": result["rowCount"],
         "cookieInvalid": result["cookieInvalid"],
+        "duplicate": result.get("duplicate", False),
         "raw": result["raw"],
     }

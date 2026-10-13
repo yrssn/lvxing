@@ -20,6 +20,7 @@ class TaskIn(BaseModel):
     intervalDays: int = 1
     timeOfDay: str  # "HH:MM"
     daysAhead: int = 1
+    daysAheadTo: int = 0  # 抓取日期范围终点（含），0/缺省=仅抓 daysAhead 单日
     minDelaySec: int = 3
     maxDelaySec: int = 10
     enabled: bool = True
@@ -41,6 +42,8 @@ def _validate(body: TaskIn):
         raise HTTPException(status_code=400, detail="间隔天数需在 1-30 之间")
     if not (0 <= body.daysAhead <= 90):
         raise HTTPException(status_code=400, detail="抓取日期偏移需在 0-90 之间")
+    if body.daysAheadTo and not (body.daysAhead <= body.daysAheadTo <= 90):
+        raise HTTPException(status_code=400, detail="抓取日期范围终点需不小于起点且不超过 90")
     if body.minDelaySec < 0 or body.maxDelaySec < 0:
         raise HTTPException(status_code=400, detail="延时秒数不能为负")
     if body.minDelaySec > body.maxDelaySec:
@@ -56,6 +59,7 @@ def _serialize(t: ScrapeTask, param_ids: list) -> dict:
         "intervalDays": t.interval_days,
         "timeOfDay": t.time_of_day.strftime("%H:%M") if t.time_of_day else "",
         "daysAhead": t.days_ahead if t.days_ahead is not None else 1,
+        "daysAheadTo": t.days_ahead_to or 0,
         "enabled": bool(t.enabled),
         "status": t.status,
         "nextRunAt": t.next_run_at.strftime("%Y-%m-%d %H:%M:%S") if t.next_run_at else "",
@@ -104,6 +108,7 @@ def create_task(body: TaskIn, user: User = Depends(auth.get_current_user)):
             interval_days=body.intervalDays,
             time_of_day=tod,
             days_ahead=body.daysAhead,
+            days_ahead_to=body.daysAheadTo or None,
             enabled=1 if body.enabled else 0,
             status="idle",
             min_delay_sec=body.minDelaySec,
@@ -135,6 +140,7 @@ def update_task(task_id: int, body: TaskIn, user: User = Depends(auth.get_curren
         t.interval_days = body.intervalDays
         t.time_of_day = tod
         t.days_ahead = body.daysAhead
+        t.days_ahead_to = body.daysAheadTo or None
         t.min_delay_sec = body.minDelaySec
         t.max_delay_sec = body.maxDelaySec
         t.enabled = 1 if body.enabled else 0

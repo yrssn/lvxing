@@ -107,50 +107,66 @@ async def run_task(task_id: int, trigger: str = "schedule"):
             status = "failed"
             message = "任务没有关联查询参数"
         else:
-            flight_date = (datetime.now() + timedelta(days=task.days_ahead or 0)).strftime("%Y-%m-%d")
-            for i, (tp, qp) in enumerate(pairs):
-                if i > 0:
-                    lo = max(0, task.min_delay_sec or 0)
-                    hi = max(lo, task.max_delay_sec or 0)
-                    if hi > 0:
-                        await asyncio.sleep(random.uniform(lo, hi))
-                p = {
-                    "domain": qp.domain or "shm",
-                    "flightNo": qp.flight_no or "",
-                    "dpt": qp.dpt or "",
-                    "arr": qp.arr or "",
-                    "flightDate": flight_date,
-                    "cabin": qp.cabin or "",
-                    "carrier": qp.carrier or "",
-                }
-                item = {
-                    "paramId": qp.id,
-                    "name": qp.name,
-                    "dpt": qp.dpt,
-                    "arr": qp.arr,
-                    "flightDate": flight_date,
-                }
-                result = await scraper.scrape_and_save(p, source="task", save=True)
-                if result.get("cookieInvalid"):
-                    item["error"] = "Cookie 已失效"
+            # 抓取日期范围：今天+daysAhead 至 今天+daysAheadTo（含），每天一个航班日期
+            start_off = task.days_ahead or 0
+            end_off = task.days_ahead_to if task.days_ahead_to is not None else start_off
+            if end_off < start_off:
+                end_off = start_off
+            offsets = list(range(start_off, end_off + 1))
+            log2 = db.get(TaskRunLog, log.id)
+            log2.total_params = len(pairs) * len(offsets)
+            db.commit()
+
+            first = True
+            for off in offsets:
+                flight_date = (datetime.now() + timedelta(days=off)).strftime("%Y-%m-%d")
+                for tp, qp in pairs:
+                    if not first:
+                        lo = max(0, task.min_delay_sec or 0)
+                        hi = max(lo, task.max_delay_sec or 0)
+                        if hi > 0:
+                            await asyncio.sleep(random.uniform(lo, hi))
+                    first = False
+                    p = {
+                        "domain": qp.domain or "shm",
+                        "flightNo": qp.flight_no or "",
+                        "dpt": qp.dpt or "",
+                        "arr": qp.arr or "",
+                        "flightDate": flight_date,
+                        "cabin": qp.cabin or "",
+                        "carrier": qp.carrier or "",
+                    }
+                    item = {
+                        "paramId": qp.id,
+                        "name": qp.name,
+                        "dpt": qp.dpt,
+                        "arr": qp.arr,
+                        "flightDate": flight_date,
+                    }
+                    result = await scraper.scrape_and_save(p, source="task", save=True)
+                    if result.get("cookieInvalid"):
+                        item["error"] = "Cookie 已失效"
+                        detail.append(item)
+                        status = "failed"
+                        message = "Cookie 已失效，本次任务提前终止，请到系统设置更新 Cookie"
+                        break
+                    if result.get("error"):
+                        item["error"] = result.get("message") or result["error"]
+                        detail.append(item)
+                        if status == "success":
+                            status = "partial"
+                        continue
+                    ok += 1
+                    item["historyId"] = result.get("historyId")
+                    item["rowCount"] = result.get("rowCount")
                     detail.append(item)
-                    status = "failed"
-                    message = "Cookie 已失效，本次任务提前终止，请到系统设置更新 Cookie"
+                if status == "failed":
                     break
-                if result.get("error"):
-                    item["error"] = result.get("message") or result["error"]
-                    detail.append(item)
-                    if status == "success":
-                        status = "partial"
-                    continue
-                ok += 1
-                item["historyId"] = result.get("historyId")
-                item["rowCount"] = result.get("rowCount")
-                detail.append(item)
-            if status != "failed" and ok < len(pairs):
+            total = len(pairs) * len(offsets)
+            if status != "failed" and ok < total:
                 status = "partial"
             if not message:
-                message = f"共 {len(pairs)} 条参数，成功 {ok} 条"
+                message = f"共 {total} 次抓取（{len(pairs)} 条参数 × {len(offsets)} 天），成功 {ok} 次"
 
         # 更新日志
         log2 = db.get(TaskRunLog, run_id)

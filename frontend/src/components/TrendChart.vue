@@ -8,12 +8,17 @@ import { CanvasRenderer } from 'echarts/renderers'
 echarts.use([LineChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
 const props = defineProps({
-  /* [{ flightDate, minSellPrice, minSelfPrice, recordCount }] */
+  /* [{ flightDate, minSellPrice, sellCabin, minSelfPrice, selfCabin, recordCount }] */
   data: { type: Array, default: () => [] },
 })
 
 const el = ref(null)
 let chart = null
+
+function fmtPrice(v, cabin) {
+  if (v == null) return '-'
+  return cabin ? `${v}(${cabin})` : `${v}`
+}
 
 function render() {
   if (!el.value) return
@@ -27,7 +32,11 @@ function render() {
       formatter(params) {
         const d = props.data[params[0].dataIndex] || {}
         const lines = [d.flightDate]
-        for (const p of params) lines.push(`${p.marker}${p.seriesName}: ${p.value ?? '-'}`)
+        for (const p of params) {
+          if (p.value == null) continue
+          const cabin = p.seriesName === '全网最低价' ? d.sellCabin : d.selfCabin
+          lines.push(`${p.marker}${p.seriesName}: ${fmtPrice(p.value, cabin)}`)
+        }
         if (d.recordCount != null) lines.push(`记录数: ${d.recordCount}`)
         return lines.join('<br/>')
       },
@@ -41,17 +50,22 @@ function render() {
         name: '全网最低价',
         type: 'line',
         data: sell,
-        connectNulls: true,
+        connectNulls: false,
         symbolSize: 7,
         lineStyle: { width: 2.5 },
         itemStyle: { color: '#1a7f4b' },
-        label: { show: true, position: 'top', fontSize: 11 },
+        label: {
+          show: true,
+          position: 'top',
+          fontSize: 11,
+          formatter: (p) => (p.value == null ? '' : fmtPrice(p.value, props.data[p.dataIndex]?.sellCabin)),
+        },
       },
       {
         name: '自有政策最低价',
         type: 'line',
         data: self,
-        connectNulls: true,
+        connectNulls: false,
         symbolSize: 6,
         lineStyle: { width: 2, type: 'dashed' },
         itemStyle: { color: '#e6a23c' },

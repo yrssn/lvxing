@@ -40,6 +40,7 @@ const emptyForm = () => ({
   intervalDays: 1,
   timeOfDay: '08:00',
   daysAhead: 1,
+  daysAheadTo: 0,
   minDelaySec: 3,
   maxDelaySec: 10,
   enabled: true,
@@ -59,6 +60,7 @@ function openEdit(row) {
     intervalDays: row.intervalDays,
     timeOfDay: row.timeOfDay,
     daysAhead: row.daysAhead,
+    daysAheadTo: row.daysAheadTo || 0,
     minDelaySec: row.minDelaySec,
     maxDelaySec: row.maxDelaySec,
     enabled: row.enabled,
@@ -77,6 +79,10 @@ async function save() {
   }
   if (form.minDelaySec > form.maxDelaySec) {
     ElMessage.warning('最小延时不能大于最大延时')
+    return
+  }
+  if (form.daysAheadTo && form.daysAheadTo < form.daysAhead) {
+    ElMessage.warning('抓取日期范围终点不能小于起点')
     return
   }
   saving.value = true
@@ -172,7 +178,9 @@ onMounted(load)
           <template #default="{ row }">{{ paramsText(row.paramIds) || '-' }}</template>
         </el-table-column>
         <el-table-column label="抓取日期" width="90">
-          <template #default="{ row }">{{ row.daysAhead === 0 ? '今天' : `${row.daysAhead}天后` }}</template>
+          <template #default="{ row }">
+            {{ row.daysAheadTo && row.daysAheadTo > row.daysAhead ? `${row.daysAhead}~${row.daysAheadTo}天后` : row.daysAhead === 0 ? '今天' : `${row.daysAhead}天后` }}
+          </template>
         </el-table-column>
         <el-table-column label="频率" width="120">
           <template #default="{ row }">
@@ -232,8 +240,13 @@ onMounted(load)
           <div class="tip">抓取时按选择顺序逐条执行，参数可在「航班信息」模块维护</div>
         </el-form-item>
         <el-form-item label="抓取航班日期">
-          <el-input-number v-model="form.daysAhead" :min="0" :max="90" />
-          <span class="tip-inline">天后的航班（0=今天，1=明天）</span>
+          <div class="date-range">
+            <span>提前</span>
+            <el-input-number v-model="form.daysAhead" :min="0" :max="90" controls-position="right" style="width: 110px" />
+            <span>至</span>
+            <el-input-number v-model="form.daysAheadTo" :min="0" :max="90" controls-position="right" style="width: 110px" />
+            <span>天后的航班日期（含当天；终点 0 = 只抓单日）</span>
+          </div>
         </el-form-item>
         <el-form-item label="执行间隔">
           <el-input-number v-model="form.intervalDays" :min="1" :max="30" />
@@ -318,6 +331,16 @@ onMounted(load)
   color: #999;
   font-size: 12px;
   margin: 0 8px;
+}
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.date-range span {
+  color: #606266;
+  font-size: 13px;
 }
 .detail-wrap {
   padding: 8px 12px;
