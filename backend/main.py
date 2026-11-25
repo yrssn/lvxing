@@ -14,7 +14,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import db
-from routers import auth, data, history, params, scrape, settings, tasks, users
+from routers import auth, data, history, params, scrape, settings, tasks, users, xiamenair
+import xiamen_scheduler
 from scheduler import scheduler_start, scheduler_stop
 
 
@@ -29,7 +30,12 @@ async def lifespan(app: FastAPI):
         scheduler_start()
     except Exception as e:
         print(f"[warn] 调度器启动失败: {e}")
+    try:
+        xiamen_scheduler.start()
+    except Exception as e:
+        print(f"[warn] 厦航独立调度器启动失败: {type(e).__name__}")
     yield
+    await xiamen_scheduler.stop()
     scheduler_stop()
 
 
@@ -42,7 +48,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth.router, users.router, settings.router, scrape.router, history.router, params.router, tasks.router, data.router):
+for r in (auth.router, users.router, settings.router, scrape.router, history.router, params.router, tasks.router, data.router, xiamenair.router):
     app.include_router(r)
 
 

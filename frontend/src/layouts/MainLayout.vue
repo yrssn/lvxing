@@ -16,6 +16,7 @@ const menus = computed(() => {
     { path: '/data', title: '航班数据', icon: 'DataLine' },
     { path: '/info', title: '航班信息', icon: 'Tickets' },
     { path: '/tasks', title: '定时任务', icon: 'Timer' },
+    { path: '/xiamenair', title: '厦航限时优惠', icon: 'Promotion' },
   ]
   if (isAdmin()) base.push({ path: '/users', title: '用户管理', icon: 'User' })
   base.push({ path: '/settings', title: '系统设置', icon: 'Setting' })

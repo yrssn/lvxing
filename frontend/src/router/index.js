@@ -13,6 +13,7 @@ const routes = [
     component: () => import('../layouts/MainLayout.vue'),
     redirect: '/manual',
     children: [
+      { path: 'xiamenair', name: 'xiamenair', component: () => import('../views/XiamenView.vue'), meta: { title: '厦航限时优惠' } },
       { path: 'manual', name: 'manual', component: () => import('../views/ManualScrapeView.vue'), meta: { title: '手动抓取' } },
       { path: 'data', name: 'data', component: () => import('../views/FlightDataView.vue'), meta: { title: '航班数据' } },
       { path: 'info', name: 'info', component: () => import('../views/FlightInfoView.vue'), meta: { title: '航班信息' } },

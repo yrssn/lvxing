@@ -1,0 +1,948 @@
+{
+  "verifiedAt": "2026-11-25T15:52:40.819975+08:00",
+  "endpoint": "https://csapi-2a.xiamenair.com/offer/api/v3/offer/shopping?preBusiness=0&type=I",
+  "request": {
+    "origin": "SHA",
+    "destination": "MEL",
+    "adult": 1,
+    "lowestFare": true
+  },
+  "observations": {
+    "withoutSession": {
+      "httpStatus": 401,
+      "code": 1001,
+      "tip": "缺少accesstoken参数"
+    },
+    "cookieWithoutUds": {
+      "httpStatus": 200,
+      "success": false,
+      "code": 956100,
+      "tip": "uds-empty"
+    },
+    "cookieAndUds": "使用提供的 Cookie、uds 和基础业务头，可查询下一天；无需复用 sw8、Timestamp。仅验证本次会话，未验证长期有效性。",
+    "lowestFareFalse": {
+      "httpStatus": 500,
+      "success": false,
+      "tip": "Cannot read property 'length' of undefined"
+    }
+  },
+  "fieldMapping": {
+    "journeys": "result.odInfos[].flightInfos[]",
+    "prices": "flightInfo.paxCabins.ADT1[]",
+    "promotion": "result.offers[offerId].disclosureIds -> result.refData.disclosures[id]",
+    "segments": "flightInfo.segmentIds -> result.refData.segments[id]",
+    "operator": "segment.operatingCarrier.carrier.code",
+    "services": "flightInfo.transferServices.availableServices",
+    "note": "paxCabins.ADT1 与 ADT_BRAND 会重复引用同一个 offer；须去重。时长需结合时区计算，不能直接用 paxJourney.duration 当总行程时间。"
+  },
+  "samples": [
+    {
+      "date": "2026-11-25",
+      "httpStatus": 200,
+      "success": true,
+      "code": 0,
+      "journeyCombinations": 3,
+      "rows": [
+        {
+          "segmentFlights": [
+            "MF8546",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MF8546",
+            "MF803"
+          ],
+          "allOperatedByMF": true,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-25T21:45:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 2030,
+          "transferMinutes": [
+            1350
+          ],
+          "transferServices": [
+            "BaggageThroughCheckin",
+            "Lounge",
+            "Accommodation"
+          ],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "Q",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 707,
+              "totalAmount": 1883,
+              "currency": "CNY",
+              "disclosures": [
+                {
+                  "title": "限时优惠",
+                  "type": "Pricing",
+                  "code": "MTMF"
+                }
+              ]
+            },
+            {
+              "cabinCodes": [
+                "D",
+                "D"
+              ],
+              "cabinTypes": [
+                "Business",
+                "Business"
+              ],
+              "baseAmount": 13170,
+              "totalAmount": 14346,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF8510",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MF8510",
+            "MF803"
+          ],
+          "allOperatedByMF": true,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-25T18:10:00",
+          "arrival": "2026-11-26T10:35:00",
+          "elapsedMinutes": 805,
+          "transferMinutes": [
+            135
+          ],
+          "transferServices": [
+            "BaggageThroughCheckin"
+          ],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "Q",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 777,
+              "totalAmount": 1953,
+              "currency": "CNY",
+              "disclosures": [
+                {
+                  "title": "限时优惠",
+                  "type": "Pricing",
+                  "code": "MTMF"
+                }
+              ]
+            },
+            {
+              "cabinCodes": [
+                "Y",
+                "D"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Business"
+              ],
+              "baseAmount": 9350,
+              "totalAmount": 10526,
+              "currency": "CNY",
+              "disclosures": [
+                {
+                  "title": "温馨提醒",
+                  "type": "Declare",
+                  "code": "中转联程多航段物理舱位不同提示2"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF3945",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MU5641",
+            "MF803"
+          ],
+          "allOperatedByMF": false,
+          "route": [
+            "PVG",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-25T22:15:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 2000,
+          "transferMinutes": [
+            1310
+          ],
+          "transferServices": [],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "V",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 2160,
+              "totalAmount": 3336,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-11-26",
+      "httpStatus": 200,
+      "success": true,
+      "code": 0,
+      "journeyCombinations": 14,
+      "rows": [
+        {
+          "segmentFlights": [
+            "MF8518",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MF8518",
+            "MF803"
+          ],
+          "allOperatedByMF": true,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T07:10:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 1465,
+          "transferMinutes": [
+            780
+          ],
+          "transferServices": [
+            "BaggageThroughCheckin",
+            "Lounge"
+          ],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "R",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 700,
+              "totalAmount": 1876,
+              "currency": "CNY",
+              "disclosures": [
+                {
+                  "title": "限时优惠",
+                  "type": "Pricing",
+                  "code": "MTMF"
+                }
+              ]
+            },
+            {
+              "cabinCodes": [
+                "D",
+                "D"
+              ],
+              "cabinTypes": [
+                "Business",
+                "Business"
+              ],
+              "baseAmount": 13170,
+              "totalAmount": 14346,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF8512",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MF8512",
+            "MF803"
+          ],
+          "allOperatedByMF": true,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T12:10:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 1165,
+          "transferMinutes": [
+            495
+          ],
+          "transferServices": [
+            "BaggageThroughCheckin",
+            "Lounge"
+          ],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "Q",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 707,
+              "totalAmount": 1883,
+              "currency": "CNY",
+              "disclosures": [
+                {
+                  "title": "限时优惠",
+                  "type": "Pricing",
+                  "code": "MTMF"
+                }
+              ]
+            },
+            {
+              "cabinCodes": [
+                "D",
+                "D"
+              ],
+              "cabinTypes": [
+                "Business",
+                "Business"
+              ],
+              "baseAmount": 13170,
+              "totalAmount": 14346,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF8502",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MF8502",
+            "MF803"
+          ],
+          "allOperatedByMF": true,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T10:10:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 1285,
+          "transferMinutes": [
+            610
+          ],
+          "transferServices": [
+            "BaggageThroughCheckin",
+            "Lounge"
+          ],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "Q",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 707,
+              "totalAmount": 1883,
+              "currency": "CNY",
+              "disclosures": [
+                {
+                  "title": "限时优惠",
+                  "type": "Pricing",
+                  "code": "MTMF"
+                }
+              ]
+            },
+            {
+              "cabinCodes": [
+                "D",
+                "D"
+              ],
+              "cabinTypes": [
+                "Business",
+                "Business"
+              ],
+              "baseAmount": 13170,
+              "totalAmount": 14346,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF8522",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MF8522",
+            "MF803"
+          ],
+          "allOperatedByMF": true,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T16:10:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 925,
+          "transferMinutes": [
+            245
+          ],
+          "transferServices": [
+            "BaggageThroughCheckin",
+            "Lounge"
+          ],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "R",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 770,
+              "totalAmount": 1946,
+              "currency": "CNY",
+              "disclosures": [
+                {
+                  "title": "限时优惠",
+                  "type": "Pricing",
+                  "code": "MTMF"
+                }
+              ]
+            },
+            {
+              "cabinCodes": [
+                "D",
+                "D"
+              ],
+              "cabinTypes": [
+                "Business",
+                "Business"
+              ],
+              "baseAmount": 13170,
+              "totalAmount": 14346,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF8568",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MF8568",
+            "MF803"
+          ],
+          "allOperatedByMF": true,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T14:10:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 1045,
+          "transferMinutes": [
+            365
+          ],
+          "transferServices": [
+            "BaggageThroughCheckin",
+            "Lounge"
+          ],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "R",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 770,
+              "totalAmount": 1946,
+              "currency": "CNY",
+              "disclosures": [
+                {
+                  "title": "限时优惠",
+                  "type": "Pricing",
+                  "code": "MTMF"
+                }
+              ]
+            },
+            {
+              "cabinCodes": [
+                "D",
+                "D"
+              ],
+              "cabinTypes": [
+                "Business",
+                "Business"
+              ],
+              "baseAmount": 13170,
+              "totalAmount": 14346,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF8510",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MF8510",
+            "MF803"
+          ],
+          "allOperatedByMF": true,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T18:10:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 805,
+          "transferMinutes": [
+            120
+          ],
+          "transferServices": [
+            "BaggageThroughCheckin"
+          ],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "Q",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 777,
+              "totalAmount": 1953,
+              "currency": "CNY",
+              "disclosures": [
+                {
+                  "title": "限时优惠",
+                  "type": "Pricing",
+                  "code": "MTMF"
+                }
+              ]
+            },
+            {
+              "cabinCodes": [
+                "J",
+                "D"
+              ],
+              "cabinTypes": [
+                "Business",
+                "Business"
+              ],
+              "baseAmount": 13170,
+              "totalAmount": 14346,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF8546",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MF8546",
+            "MF803"
+          ],
+          "allOperatedByMF": true,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T21:45:00",
+          "arrival": "2026-11-28T10:35:00",
+          "elapsedMinutes": 2030,
+          "transferMinutes": [
+            1350
+          ],
+          "transferServices": [
+            "BaggageThroughCheckin",
+            "Lounge",
+            "Accommodation"
+          ],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "Q",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 1010,
+              "totalAmount": 2186,
+              "currency": "CNY",
+              "disclosures": []
+            },
+            {
+              "cabinCodes": [
+                "D",
+                "D"
+              ],
+              "cabinTypes": [
+                "Business",
+                "Business"
+              ],
+              "baseAmount": 13170,
+              "totalAmount": 14346,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF3945",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MU5641",
+            "MF803"
+          ],
+          "allOperatedByMF": false,
+          "route": [
+            "PVG",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T22:15:00",
+          "arrival": "2026-11-28T10:35:00",
+          "elapsedMinutes": 2000,
+          "transferMinutes": [
+            1310
+          ],
+          "transferServices": [],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "T",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 2060,
+              "totalAmount": 3236,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF3939",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MU5635",
+            "MF803"
+          ],
+          "allOperatedByMF": false,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T07:55:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 1420,
+          "transferMinutes": [
+            740
+          ],
+          "transferServices": [],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "V",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 2160,
+              "totalAmount": 3336,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF3949",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MU5647",
+            "MF803"
+          ],
+          "allOperatedByMF": false,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T12:30:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 1145,
+          "transferMinutes": [
+            460
+          ],
+          "transferServices": [],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "Q",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 2260,
+              "totalAmount": 3436,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF3943",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MU5639",
+            "MF803"
+          ],
+          "allOperatedByMF": false,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T15:00:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 995,
+          "transferMinutes": [
+            315
+          ],
+          "transferServices": [],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "K",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 2560,
+              "totalAmount": 3736,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF3961",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MU5665",
+            "MF803"
+          ],
+          "allOperatedByMF": false,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T11:05:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 1230,
+          "transferMinutes": [
+            555
+          ],
+          "transferServices": [],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "K",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 2560,
+              "totalAmount": 3736,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF3941",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MU5637",
+            "MF803"
+          ],
+          "allOperatedByMF": false,
+          "route": [
+            "PVG",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T11:00:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 1235,
+          "transferMinutes": [
+            540
+          ],
+          "transferServices": [],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "K",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 2560,
+              "totalAmount": 3736,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        },
+        {
+          "segmentFlights": [
+            "MF3959",
+            "MF803"
+          ],
+          "operatingFlights": [
+            "MU5663",
+            "MF803"
+          ],
+          "allOperatedByMF": false,
+          "route": [
+            "SHA",
+            "XMN",
+            "MEL"
+          ],
+          "departure": "2026-11-26T08:40:00",
+          "arrival": "2026-11-27T10:35:00",
+          "elapsedMinutes": 1375,
+          "transferMinutes": [
+            695
+          ],
+          "transferServices": [],
+          "cabins": [
+            {
+              "cabinCodes": [
+                "K",
+                "S"
+              ],
+              "cabinTypes": [
+                "Economy",
+                "Economy"
+              ],
+              "baseAmount": 2560,
+              "totalAmount": 3736,
+              "currency": "CNY",
+              "disclosures": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "integration": {
+    "reusable": [
+      "现有航线/查询参数",
+      "日期区间",
+      "定时任务和执行日志"
+    ],
+    "needed": [
+      "独立厦航数据源及会话配置",
+      "报价-航程-航段结构",
+      "优惠关联与筛选",
+      "实际承运航司筛选",
+      "会话失效与业务错误识别"
+    ],
+    "unverified": [
+      "全部品牌/舱位档价及 offer 详情请求",
+      "会话自动续期与长期稳定性",
+      "其他航线和机场代码的实际可售范围"
+    ],
+    "scope": "本次为少量接口可行性验证；未接入运行中系统，未新增定时抓取。"
+  }
+}

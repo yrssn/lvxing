@@ -1,0 +1,621 @@
+{
+  "code": 0,
+  "success": true,
+  "result": {
+    "odInfos": [
+      {
+        "flightInfos": [
+          {
+            "segmentIds": [
+              "MF8546-SHA-XMN-2026-11-25",
+              "MF803-XMN-MEL-2026-11-26"
+            ],
+            "paxCabins": {
+              "ADT1": [
+                {
+                  "offerId": "07722db4c481465eb8c3da5999f460cf",
+                  "paxJourneyId": "411704b749cd4ef289f3a1b36b4c290e",
+                  "cabinCodes": [
+                    "Q",
+                    "S"
+                  ],
+                  "cabinTypes": [
+                    "Economy",
+                    "Economy"
+                  ],
+                  "totalAmount": 1883,
+                  "baseAmount": 707,
+                  "currency": "CNY",
+                  "seatRemains": 99
+                },
+                {
+                  "offerId": "2538e055cf6d4f52b8bfffbc0d3ee18a",
+                  "paxJourneyId": "a6b170ca493449bd9fbd7693759991cd",
+                  "cabinCodes": [
+                    "D",
+                    "D"
+                  ],
+                  "cabinTypes": [
+                    "Business",
+                    "Business"
+                  ],
+                  "totalAmount": 14346,
+                  "baseAmount": 13170,
+                  "currency": "CNY",
+                  "seatRemains": 2
+                }
+              ],
+              "ADT_BRAND": [
+                {
+                  "offerId": "07722db4c481465eb8c3da5999f460cf",
+                  "paxJourneyId": "411704b749cd4ef289f3a1b36b4c290e",
+                  "cabinCodes": [
+                    "Q",
+                    "S"
+                  ],
+                  "cabinTypes": [
+                    "Economy",
+                    "Economy"
+                  ],
+                  "totalAmount": 1883,
+                  "baseAmount": 707,
+                  "currency": "CNY",
+                  "seatRemains": 99
+                },
+                {
+                  "offerId": "2538e055cf6d4f52b8bfffbc0d3ee18a",
+                  "paxJourneyId": "a6b170ca493449bd9fbd7693759991cd",
+                  "cabinCodes": [
+                    "D",
+                    "D"
+                  ],
+                  "cabinTypes": [
+                    "Business",
+                    "Business"
+                  ],
+                  "totalAmount": 14346,
+                  "baseAmount": 13170,
+                  "currency": "CNY",
+                  "seatRemains": 2
+                }
+              ]
+            }
+          },
+          {
+            "segmentIds": [
+              "MF8510-SHA-XMN-2026-11-25",
+              "MF803-XMN-MEL-2026-11-25"
+            ],
+            "paxCabins": {
+              "ADT1": [
+                {
+                  "offerId": "fb874d3bed554b87804db6b0c450b017",
+                  "paxJourneyId": "fa2b5b68290945b5931e8f44df62be9e",
+                  "cabinCodes": [
+                    "Q",
+                    "S"
+                  ],
+                  "cabinTypes": [
+                    "Economy",
+                    "Economy"
+                  ],
+                  "totalAmount": 1953,
+                  "baseAmount": 777,
+                  "currency": "CNY",
+                  "seatRemains": 99
+                },
+                {
+                  "offerId": "b4b731cc2f934aa9ab68957ddeda4ee2",
+                  "paxJourneyId": "b6d205d5fd2e4c73ab76d2189f100f6a",
+                  "cabinCodes": [
+                    "Y",
+                    "D"
+                  ],
+                  "cabinTypes": [
+                    "Economy",
+                    "Business"
+                  ],
+                  "totalAmount": 10526,
+                  "baseAmount": 9350,
+                  "currency": "CNY",
+                  "seatRemains": 2
+                }
+              ],
+              "ADT_BRAND": [
+                {
+                  "offerId": "fb874d3bed554b87804db6b0c450b017",
+                  "paxJourneyId": "fa2b5b68290945b5931e8f44df62be9e",
+                  "cabinCodes": [
+                    "Q",
+                    "S"
+                  ],
+                  "cabinTypes": [
+                    "Economy",
+                    "Economy"
+                  ],
+                  "totalAmount": 1953,
+                  "baseAmount": 777,
+                  "currency": "CNY",
+                  "seatRemains": 99
+                },
+                {
+                  "offerId": "b4b731cc2f934aa9ab68957ddeda4ee2",
+                  "paxJourneyId": "b6d205d5fd2e4c73ab76d2189f100f6a",
+                  "cabinCodes": [
+                    "Y",
+                    "D"
+                  ],
+                  "cabinTypes": [
+                    "Economy",
+                    "Business"
+                  ],
+                  "totalAmount": 10526,
+                  "baseAmount": 9350,
+                  "currency": "CNY",
+                  "seatRemains": 2
+                }
+              ]
+            }
+          },
+          {
+            "segmentIds": [
+              "MF3945-PVG-XMN-2026-11-25",
+              "MF803-XMN-MEL-2026-11-26"
+            ],
+            "paxCabins": {
+              "ADT1": [
+                {
+                  "offerId": "3407ffaf8acf4ec9912652dcc86d7fda",
+                  "paxJourneyId": "fe46c2bd59b54de1acd52d339d705b86",
+                  "cabinCodes": [
+                    "V",
+                    "S"
+                  ],
+                  "cabinTypes": [
+                    "Economy",
+                    "Economy"
+                  ],
+                  "totalAmount": 3336,
+                  "baseAmount": 2160,
+                  "currency": "CNY",
+                  "seatRemains": 7
+                }
+              ],
+              "ADT_BRAND": [
+                {
+                  "offerId": "3407ffaf8acf4ec9912652dcc86d7fda",
+                  "paxJourneyId": "fe46c2bd59b54de1acd52d339d705b86",
+                  "cabinCodes": [
+                    "V",
+                    "S"
+                  ],
+                  "cabinTypes": [
+                    "Economy",
+                    "Economy"
+                  ],
+                  "totalAmount": 3336,
+                  "baseAmount": 2160,
+                  "currency": "CNY",
+                  "seatRemains": 7
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "offers": {
+      "fb874d3bed554b87804db6b0c450b017": {
+        "disclosureIds": [
+          "154912"
+        ]
+      },
+      "b4b731cc2f934aa9ab68957ddeda4ee2": {
+        "disclosureIds": [
+          "9c05581e4bd04c139055c8e9cdc6c503"
+        ]
+      },
+      "07722db4c481465eb8c3da5999f460cf": {
+        "disclosureIds": [
+          "154911"
+        ]
+      },
+      "3407ffaf8acf4ec9912652dcc86d7fda": {
+        "disclosureIds": []
+      },
+      "2538e055cf6d4f52b8bfffbc0d3ee18a": {
+        "disclosureIds": []
+      }
+    },
+    "refData": {
+      "segments": {
+        "MF8510-SHA-XMN-2026-11-25": {
+          "duration": "PT1H50M",
+          "marketingCarrier": {
+            "flightNumber": "8510",
+            "carrier": {
+              "code": "MF"
+            }
+          },
+          "operatingCarrier": {
+            "flightNumber": "8510",
+            "carrier": {
+              "code": "MF"
+            }
+          },
+          "equipment": {
+            "code": "321",
+            "name": "空客A",
+            "infoUrl": "",
+            "manufacture": ""
+          },
+          "flightLegs": [],
+          "departure": {
+            "aircraftScheduledDateTime": "2026-11-25T18:10:00",
+            "timeZone": {
+              "code": "CN01",
+              "designator": "+08:00",
+              "offset": 480
+            },
+            "iataLocationCode": "SHA",
+            "stationName": "虹桥",
+            "terminalName": "T1",
+            "countryCode": "CN",
+            "iataLocationName": "上海"
+          },
+          "arrival": {
+            "aircraftScheduledDateTime": "2026-11-25T20:00:00",
+            "timeZone": {
+              "code": "CN01",
+              "designator": "+08:00",
+              "offset": 480
+            },
+            "iataLocationCode": "XMN",
+            "stationName": "高崎",
+            "terminalName": "T3",
+            "countryCode": "CN",
+            "iataLocationName": "厦门"
+          },
+          "regionCode": "D",
+          "id": "MF8510-SHA-XMN-2026-11-25"
+        },
+        "MF803-XMN-MEL-2026-11-26": {
+          "duration": "PT9H20M",
+          "marketingCarrier": {
+            "flightNumber": "803",
+            "carrier": {
+              "code": "MF"
+            }
+          },
+          "operatingCarrier": {
+            "flightNumber": "803",
+            "carrier": {
+              "code": "MF"
+            }
+          },
+          "equipment": {
+            "code": "789",
+            "name": "波音",
+            "infoUrl": "",
+            "manufacture": ""
+          },
+          "flightLegs": [],
+          "departure": {
+            "aircraftScheduledDateTime": "2026-11-26T22:15:00",
+            "timeZone": {
+              "code": "CN01",
+              "designator": "+08:00",
+              "offset": 480
+            },
+            "iataLocationCode": "XMN",
+            "stationName": "高崎",
+            "terminalName": "T3",
+            "countryCode": "CN",
+            "iataLocationName": "厦门"
+          },
+          "arrival": {
+            "aircraftScheduledDateTime": "2026-11-27T10:35:00",
+            "timeZone": {
+              "code": "AU02",
+              "designator": "+11:00",
+              "offset": 660
+            },
+            "iataLocationCode": "MEL",
+            "stationName": "国际机场",
+            "terminalName": "T2",
+            "countryCode": "AU",
+            "iataLocationName": "墨尔本"
+          },
+          "regionCode": "I",
+          "id": "MF803-XMN-MEL-2026-11-26"
+        },
+        "MF8546-SHA-XMN-2026-11-25": {
+          "duration": "PT2H",
+          "marketingCarrier": {
+            "flightNumber": "8546",
+            "carrier": {
+              "code": "MF"
+            }
+          },
+          "operatingCarrier": {
+            "flightNumber": "8546",
+            "carrier": {
+              "code": "MF"
+            }
+          },
+          "equipment": {
+            "code": "738",
+            "name": "波音",
+            "infoUrl": "",
+            "manufacture": ""
+          },
+          "flightLegs": [],
+          "departure": {
+            "aircraftScheduledDateTime": "2026-11-25T21:45:00",
+            "timeZone": {
+              "code": "CN01",
+              "designator": "+08:00",
+              "offset": 480
+            },
+            "iataLocationCode": "SHA",
+            "stationName": "虹桥",
+            "terminalName": "T1",
+            "countryCode": "CN",
+            "iataLocationName": "上海"
+          },
+          "arrival": {
+            "aircraftScheduledDateTime": "2026-11-25T23:45:00",
+            "timeZone": {
+              "code": "CN01",
+              "designator": "+08:00",
+              "offset": 480
+            },
+            "iataLocationCode": "XMN",
+            "stationName": "高崎",
+            "terminalName": "T3",
+            "countryCode": "CN",
+            "iataLocationName": "厦门"
+          },
+          "regionCode": "D",
+          "id": "MF8546-SHA-XMN-2026-11-25"
+        },
+        "MF803-XMN-MEL-2026-11-25": {
+          "duration": "PT9H20M",
+          "marketingCarrier": {
+            "flightNumber": "803",
+            "carrier": {
+              "code": "MF"
+            }
+          },
+          "operatingCarrier": {
+            "flightNumber": "803",
+            "carrier": {
+              "code": "MF"
+            }
+          },
+          "equipment": {
+            "code": "789",
+            "name": "波音",
+            "infoUrl": "",
+            "manufacture": ""
+          },
+          "flightLegs": [],
+          "departure": {
+            "aircraftScheduledDateTime": "2026-11-25T22:15:00",
+            "timeZone": {
+              "code": "CN01",
+              "designator": "+08:00",
+              "offset": 480
+            },
+            "iataLocationCode": "XMN",
+            "stationName": "高崎",
+            "terminalName": "T3",
+            "countryCode": "CN",
+            "iataLocationName": "厦门"
+          },
+          "arrival": {
+            "aircraftScheduledDateTime": "2026-11-26T10:35:00",
+            "timeZone": {
+              "code": "AU02",
+              "designator": "+11:00",
+              "offset": 660
+            },
+            "iataLocationCode": "MEL",
+            "stationName": "国际机场",
+            "terminalName": "T2",
+            "countryCode": "AU",
+            "iataLocationName": "墨尔本"
+          },
+          "regionCode": "I",
+          "id": "MF803-XMN-MEL-2026-11-25"
+        },
+        "MF3945-PVG-XMN-2026-11-25": {
+          "duration": "PT2H10M",
+          "marketingCarrier": {
+            "flightNumber": "3945",
+            "carrier": {
+              "code": "MF"
+            }
+          },
+          "operatingCarrier": {
+            "flightNumber": "5641",
+            "carrier": {
+              "code": "MU"
+            }
+          },
+          "equipment": {
+            "code": "320",
+            "name": "空客A",
+            "infoUrl": "",
+            "manufacture": ""
+          },
+          "flightLegs": [],
+          "departure": {
+            "aircraftScheduledDateTime": "2026-11-25T22:15:00",
+            "timeZone": {
+              "code": "CN01",
+              "designator": "+08:00",
+              "offset": 480
+            },
+            "iataLocationCode": "PVG",
+            "stationName": "浦东",
+            "terminalName": "T1",
+            "countryCode": "CN",
+            "iataLocationName": "上海"
+          },
+          "arrival": {
+            "aircraftScheduledDateTime": "2026-11-26T00:25:00",
+            "timeZone": {
+              "code": "CN01",
+              "designator": "+08:00",
+              "offset": 480
+            },
+            "iataLocationCode": "XMN",
+            "stationName": "高崎",
+            "terminalName": "T4",
+            "countryCode": "CN",
+            "iataLocationName": "厦门"
+          },
+          "regionCode": "D",
+          "id": "MF3945-PVG-XMN-2026-11-25"
+        }
+      },
+      "paxJourneys": {
+        "fe46c2bd59b54de1acd52d339d705b86": {
+          "segmentIds": [
+            "MF3945-PVG-XMN-2026-11-25",
+            "MF803-XMN-MEL-2026-11-26"
+          ]
+        },
+        "a6b170ca493449bd9fbd7693759991cd": {
+          "segmentIds": [
+            "MF8546-SHA-XMN-2026-11-25",
+            "MF803-XMN-MEL-2026-11-26"
+          ],
+          "transferServices": {
+            "availableServiceList": [
+              {
+                "transferServiceType": "BaggageThroughCheckin",
+                "serviceContent": {
+                  "name": "行李直挂"
+                }
+              },
+              {
+                "transferServiceType": "Lounge",
+                "serviceContent": {
+                  "name": "免费中转休息室"
+                }
+              },
+              {
+                "transferServiceType": "Accommodation",
+                "serviceContent": {
+                  "name": "免费中转住宿"
+                }
+              }
+            ]
+          }
+        },
+        "fa2b5b68290945b5931e8f44df62be9e": {
+          "segmentIds": [
+            "MF8510-SHA-XMN-2026-11-25",
+            "MF803-XMN-MEL-2026-11-25"
+          ],
+          "transferServices": {
+            "availableServiceList": [
+              {
+                "transferServiceType": "BaggageThroughCheckin",
+                "serviceContent": {
+                  "name": "行李直挂"
+                }
+              }
+            ]
+          }
+        },
+        "b6d205d5fd2e4c73ab76d2189f100f6a": {
+          "segmentIds": [
+            "MF8510-SHA-XMN-2026-11-25",
+            "MF803-XMN-MEL-2026-11-25"
+          ],
+          "transferServices": {
+            "availableServiceList": [
+              {
+                "transferServiceType": "BaggageThroughCheckin",
+                "serviceContent": {
+                  "name": "行李直挂"
+                }
+              }
+            ]
+          }
+        },
+        "411704b749cd4ef289f3a1b36b4c290e": {
+          "segmentIds": [
+            "MF8546-SHA-XMN-2026-11-25",
+            "MF803-XMN-MEL-2026-11-26"
+          ],
+          "transferServices": {
+            "availableServiceList": [
+              {
+                "transferServiceType": "BaggageThroughCheckin",
+                "serviceContent": {
+                  "name": "行李直挂"
+                }
+              },
+              {
+                "transferServiceType": "Lounge",
+                "serviceContent": {
+                  "name": "免费中转休息室"
+                }
+              },
+              {
+                "transferServiceType": "Accommodation",
+                "serviceContent": {
+                  "name": "免费中转住宿"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "disclosures": {
+        "154911": {
+          "id": "154911",
+          "title": "限时优惠",
+          "type": "Pricing",
+          "subType": "MTMF",
+          "descriptions": [
+            {
+              "text": "<p style=\"font-family: PingFang-SC-Medium;font-size: 18px;letter-spacing: 0;line-height: 16px;\">限时特惠</p>"
+            }
+          ],
+          "disclosureCode": "MTMF"
+        },
+        "154912": {
+          "id": "154912",
+          "title": "限时优惠",
+          "type": "Pricing",
+          "subType": "MTMF",
+          "descriptions": [
+            {
+              "text": "<p style=\"font-family: PingFang-SC-Medium;font-size: 18px;letter-spacing: 0;line-height: 16px;\">限时特惠</p>"
+            }
+          ],
+          "disclosureCode": "MTMF"
+        },
+        "9c05581e4bd04c139055c8e9cdc6c503": {
+          "id": "9c05581e4bd04c139055c8e9cdc6c503",
+          "title": "温馨提醒",
+          "type": "Declare",
+          "subType": "OfferFix",
+          "lastUpdateDate": "2023-05-24T16:29:12",
+          "descriptions": [
+            {
+              "text": "<p>当前行程多个航段存在商务舱与经济舱组合的情况，请您确认后下单，如不满足您的出行需求，请返回航班列表重新选择。</p>"
+            }
+          ],
+          "disclosureCode": "中转联程多航段物理舱位不同提示2",
+          "popupWindow": false
+        }
+      }
+    }
+  }
+}

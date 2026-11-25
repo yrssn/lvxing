@@ -56,3 +56,18 @@ function buildQuery(params) {
 export const apiDataRecords = (filters) => get(`/api/data/records${buildQuery(filters)}`)
 export const apiDataTrend = (filters) => get(`/api/data/trend${buildQuery(filters)}`)
 export const apiDataPolicyTypes = () => get('/api/data/policy-types')
+
+/* ---------- 厦航独立模块 ---------- */
+export const apiXiamenSettings = () => get('/api/xiamenair/settings')
+export const apiXiamenSaveSettings = (data) => put('/api/xiamenair/settings', data)
+export const apiXiamenRoutes = () => get('/api/xiamenair/routes')
+export const apiXiamenQuery = (data) => post('/api/xiamenair/query', data)
+export const apiXiamenOffers = (filters) => get(`/api/xiamenair/offers${buildQuery(filters)}`)
+export const apiXiamenTasks = () => get('/api/xiamenair/tasks')
+export const apiXiamenTaskCreate = (data) => post('/api/xiamenair/tasks', data)
+export const apiXiamenTaskUpdate = (id, data) => put(`/api/xiamenair/tasks/${id}`, data)
+export const apiXiamenTaskRun = (id) => post(`/api/xiamenair/tasks/${id}/run`)
+export const apiXiamenTaskStop = (id) => post(`/api/xiamenair/tasks/${id}/stop`)
+export const apiXiamenTaskToggle = (id, enabled) => post(`/api/xiamenair/tasks/${id}/toggle`, { enabled })
+export const apiXiamenTaskDelete = (id) => del(`/api/xiamenair/tasks/${id}`)
+export const apiXiamenTaskLogs = (id) => get(`/api/xiamenair/tasks/${id}/logs`)

@@ -10,6 +10,7 @@ from sqlalchemy import (
     Float,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     Time,
@@ -158,3 +159,74 @@ class BiddingRecord(Base):
         Index("idx_br_created_at", "created_at"),
         Index("idx_br_dpt_arr", "dpt", "arr"),
     )
+
+
+class XiamenQuery(Base):
+    """一次成功的厦航查询；无优惠的查询也保存，防止展示旧的可售结果。"""
+    __tablename__ = "xiamen_query"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, index=True)
+    dpt = Column(String(3), nullable=False)
+    arr = Column(String(3), nullable=False)
+    flight_date = Column(Date, nullable=False)
+    mf_only = Column(Integer, nullable=False, default=1)
+    source = Column(String(10), nullable=False)
+    row_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+    __table_args__ = (Index("idx_xq_route_date", "dpt", "arr", "flight_date", "mf_only"),)
+
+
+class XiamenOffer(Base):
+    """整程优惠报价快照，金额使用十进制，航段/权益保留结构化数据。"""
+    __tablename__ = "xiamen_offer"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    query_id = Column(Integer, nullable=False, index=True)
+    flight_date = Column(Date, nullable=False, index=True)
+    dpt = Column(String(3), nullable=False)
+    arr = Column(String(3), nullable=False)
+    flight_numbers = Column(String(255), nullable=False)
+    total_amount = Column(Numeric(12, 2), nullable=False)
+    base_amount = Column(Numeric(12, 2))
+    currency = Column(String(8), nullable=False)
+    all_mf = Column(Integer, nullable=False)
+    payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+
+class XiamenTask(Base):
+    __tablename__ = "xiamen_task"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    routes = Column(JSON, nullable=False)  # 从航线库选取后保存三字码快照，互不影响
+    window_mode = Column(String(10), nullable=False, default="rolling")
+    days_ahead = Column(Integer, nullable=False, default=1)
+    days_count = Column(Integer, nullable=False, default=7)
+    fixed_date_from = Column(Date)
+    fixed_date_to = Column(Date)
+    interval_days = Column(Integer, nullable=False, default=1)
+    time_of_day = Column(Time, nullable=False)
+    min_delay_sec = Column(Integer, nullable=False, default=30)
+    max_delay_sec = Column(Integer, nullable=False, default=60)
+    mf_only = Column(Integer, nullable=False, default=1)
+    enabled = Column(Integer, nullable=False, default=0)
+    status = Column(String(20), nullable=False, default="idle")
+    stop_requested = Column(Integer, nullable=False, default=0)
+    next_run_at = Column(DateTime)
+    last_run_at = Column(DateTime)
+    last_status = Column(String(20))
+    created_at = Column(DateTime, nullable=False, default=datetime.now)
+
+
+class XiamenTaskLog(Base):
+    __tablename__ = "xiamen_task_log"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(Integer, nullable=False, index=True)
+    trigger_type = Column(String(10), nullable=False)
+    status = Column(String(20), nullable=False, default="running")
+    started_at = Column(DateTime, nullable=False, default=datetime.now)
+    finished_at = Column(DateTime)
+    total = Column(Integer, nullable=False, default=0)
+    completed = Column(Integer, nullable=False, default=0)
+    offer_count = Column(Integer, nullable=False, default=0)
+    message = Column(String(500), default="")
+    detail = Column(JSON, nullable=False, default=list)
